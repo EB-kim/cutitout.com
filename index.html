@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cut It Out — Free Background Remover, No Upload (Runs in Your Browser)</title>
+<meta name="description" content="Remove image backgrounds and make transparent PNGs for free. 100% in your browser — no upload, no signup. Instant manual cutout with magic-wand and eraser tools.">
+<link rel="canonical" href="https://cutitoutbg.com/">
+<!--
+  CSP note: AdSense pulls scripts, images, and frames from several Google ad
+  domains, so script/img/frame/connect cannot be locked to 'self' on this page.
+  Our OWN code sends NO image data anywhere — the "your image never leaves your
+  device" claim is about our code, not about ad scripts. The ad domains below are
+  the commonly-required set; VERIFY against a live AdSense unit and add any that
+  the browser console reports as CSP-blocked. For a hard-locked privacy build,
+  remove the AdSense <script> tags and tighten CSP back to 'self'.
+-->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  img-src 'self' data: blob: https://*.googlesyndication.com https://*.google.com https://*.doubleclick.net https://*.googleadservices.com;
+  style-src 'self' 'unsafe-inline';
+  script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.googletagservices.com https://*.google.com https://*.googleadservices.com;
+  frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net;
+  connect-src 'self' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com;
+  base-uri 'self';
+  form-action 'self';
+">
+<link rel="stylesheet" href="/css/style.css">
+
+<!-- Google AdSense: replace ca-pub-XXXXXXXXXXXXXXXX with your real ID after approval -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+
+<!-- HowTo schema for the tool -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to remove a background and export a transparent PNG for free",
+  "description": "Remove an image background in your browser with no upload and no signup, then export a transparent PNG.",
+  "totalTime": "PT2M",
+  "step": [
+    { "@type": "HowToStep", "name": "Drop your image", "text": "Drag an image onto the editor or click to choose a file. It stays on your device." },
+    { "@type": "HowToStep", "name": "Click the background", "text": "Use the Magic Wand and click background areas to erase them. Adjust tolerance for tricky colors." },
+    { "@type": "HowToStep", "name": "Refine edges", "text": "Use the Eraser to clean up misses and the Restore brush to bring back over-erased pixels." },
+    { "@type": "HowToStep", "name": "Export", "text": "Click Export PNG for a transparent image, or Export on White for a solid background." }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="/">Cut It Out<span>bg</span></a>
+  <nav>
+    <a href="/articles/remove-background-from-signature.html">Signature cutout</a>
+    <a href="/articles/make-logo-transparent.html">Logo cutout</a>
+    <a href="/articles/transparent-png-from-photo.html">Transparent PNG</a>
+    <a href="/privacy.html">Privacy</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>Free background remover that never uploads your image</h1>
+    <p class="lede">Make a transparent PNG in your browser — no signup, no upload, no watermark.
+    Your image is processed entirely on your device and disappears the moment you close the tab.</p>
+  </section>
+
+  <!-- The tool: the default landing experience, zero-latency manual path -->
+  <section id="tool" class="tool">
+    <div class="toolbar" id="toolbar">
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <span>Drop an image or click to choose</span>
+      </label>
+      <div class="tools" hidden id="toolButtons">
+        <button data-tool="wand" class="tool-btn active" title="Click a color region to erase it">Magic Wand</button>
+        <button data-tool="erase" class="tool-btn" title="Brush to erase pixels">Eraser</button>
+        <button data-tool="restore" class="tool-btn" title="Brush to bring pixels back">Restore</button>
+        <span class="control">
+          <label for="tolerance">Wand tolerance</label>
+          <input type="range" id="tolerance" min="0" max="120" value="30">
+        </span>
+        <span class="control">
+          <label for="brushSize">Brush</label>
+          <input type="range" id="brushSize" min="4" max="120" value="30">
+        </span>
+        <button id="undoBtn" title="Undo last action">Undo</button>
+        <button id="resetBtn" title="Reload original image">Reset</button>
+        <button id="exportPng" class="primary">Export PNG</button>
+        <button id="exportWhite">Export on White</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="canvas"></canvas>
+      <p class="canvas-hint" id="canvasHint">Your cutout preview appears here.</p>
+    </div>
+  </section>
+
+  <!-- Non-intrusive ad, below the tool, not over the canvas -->
+  <aside class="ad-slot">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+         data-ad-slot="0000000000"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </aside>
+
+  <section class="content">
+    <h2>Remove a background without uploading anything</h2>
+    <p>Most background removers send your photo to a server. Cut It Out doesn't. Everything —
+    loading, erasing, refining, and exporting — happens inside your browser using the
+    HTML canvas. There is no account to create and no file to upload, which means your
+    picture is never stored, logged, or seen by us. When you close the tab, it's gone.</p>
+
+    <h2>How the manual cutout works</h2>
+    <ol>
+      <li><strong>Drop your image.</strong> Drag it onto the editor or click to pick a file.</li>
+      <li><strong>Magic Wand.</strong> Click a background area and connected pixels of a similar
+      color are erased. Raise the tolerance for gradients and shadows; lower it for fine detail.</li>
+      <li><strong>Eraser &amp; Restore.</strong> Paint away leftover fringes, or restore pixels you
+      removed by mistake.</li>
+      <li><strong>Export.</strong> Save a transparent PNG, or flatten onto a white background if
+      you need a solid backdrop.</li>
+    </ol>
+
+    <h2>When manual beats one-click</h2>
+    <p>Automatic AI removers are great on clean portraits but stumble on screenshots, logos on
+    white, signatures, product shots with clutter, and fine hair. A quick manual pass gives you
+    precise control the automatic tools can't — and it's instant, with nothing to download.</p>
+
+    <h3>Frequently asked questions</h3>
+    <details><summary>Is it really free?</summary><p>Yes. No signup, no watermark, no upload.</p></details>
+    <details><summary>Do you keep my image?</summary><p>No. Processing is 100% in your browser. We never receive the file.</p></details>
+    <details><summary>What formats can I export?</summary><p>Transparent PNG, or PNG flattened on a white background.</p></details>
+  </section>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Is it really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. No signup, no watermark, and no upload." } },
+      { "@type": "Question", "name": "Do you keep my image?", "acceptedAnswer": { "@type": "Answer", "text": "No. Processing is 100% in your browser. We never receive the file." } },
+      { "@type": "Question", "name": "What formats can I export?", "acceptedAnswer": { "@type": "Answer", "text": "Transparent PNG, or PNG flattened on a white background." } }
+    ]
+  }
+  </script>
+</main>
+
+<footer class="site-footer">
+  <p>© <span id="year"></span> cutitoutbg.com · <a href="/privacy.html">Privacy</a> · Runs entirely in your browser.</p>
+</footer>
+
+<script src="/js/tool.js"></script>
+</body>
+</html>
