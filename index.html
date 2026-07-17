@@ -1,159 +1,1262 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cut It Out — Free Background Remover, No Upload (Runs in Your Browser)</title>
-<meta name="description" content="Remove image backgrounds and make transparent PNGs for free. 100% in your browser — no upload, no signup. Instant manual cutout with magic-wand and eraser tools.">
-<link rel="canonical" href="https://cutitoutbg.com/">
-<!--
-  CSP note: AdSense pulls scripts, images, and frames from several Google ad
-  domains, so script/img/frame/connect cannot be locked to 'self' on this page.
-  Our OWN code sends NO image data anywhere — the "your image never leaves your
-  device" claim is about our code, not about ad scripts. The ad domains below are
-  the commonly-required set; VERIFY against a live AdSense unit and add any that
-  the browser console reports as CSP-blocked. For a hard-locked privacy build,
-  remove the AdSense <script> tags and tighten CSP back to 'self'.
--->
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self';
-  img-src 'self' data: blob: https://*.googlesyndication.com https://*.google.com https://*.doubleclick.net https://*.googleadservices.com;
-  style-src 'self' 'unsafe-inline';
-  script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.googletagservices.com https://*.google.com https://*.googleadservices.com;
-  frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net;
-  connect-src 'self' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com;
-  base-uri 'self';
-  form-action 'self';
-">
-<link rel="stylesheet" href="/css/style.css">
-
-<!-- Google AdSense: replace ca-pub-XXXXXXXXXXXXXXXX with your real ID after approval -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
-
-<!-- HowTo schema for the tool -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "HowTo",
-  "name": "How to remove a background and export a transparent PNG for free",
-  "description": "Remove an image background in your browser with no upload and no signup, then export a transparent PNG.",
-  "totalTime": "PT2M",
-  "step": [
-    { "@type": "HowToStep", "name": "Drop your image", "text": "Drag an image onto the editor or click to choose a file. It stays on your device." },
-    { "@type": "HowToStep", "name": "Click the background", "text": "Use the Magic Wand and click background areas to erase them. Adjust tolerance for tricky colors." },
-    { "@type": "HowToStep", "name": "Refine edges", "text": "Use the Eraser to clean up misses and the Restore brush to bring back over-erased pixels." },
-    { "@type": "HowToStep", "name": "Export", "text": "Click Export PNG for a transparent image, or Export on White for a solid background." }
-  ]
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cutitoutbg.com — snip pieces, compose a new image</title>
+<meta name="description" content="cutitoutbg.com — cut parts out of images and compose new ones, entirely in your browser. Your images never leave your device.">
+<!-- No external resources by default. The optional, opt-in "AI cutout" button downloads an open-source model from a public CDN when used. All image processing happens locally. -->
+<style>
+:root{
+  --mat-deep:#10302A;
+  --mat:#173B33;
+  --mat-2:#1E4339;
+  --grid:rgba(150,205,182,.10);
+  --grid-bold:rgba(150,205,182,.20);
+  --chalk:#EAF1EC;
+  --muted:#8FAEA2;
+  --muted-2:#6E8A80;
+  --blade:#FF6A3D;
+  --blade-soft:rgba(255,106,61,.16);
+  --paper:#F5F1E6;
+  --line:rgba(150,205,182,.16);
+  --danger:#F0586A;
 }
-</script>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:
+    linear-gradient(0deg, rgba(0,0,0,.18), rgba(0,0,0,.18)),
+    var(--mat-deep);
+  color:var(--chalk);
+  font-family:system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+.mono{font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace}
+
+/* ---------- top bar ---------- */
+header{
+  display:flex;align-items:center;gap:18px;
+  padding:14px 22px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand .knife{
+  width:14px;height:14px;border-radius:2px;background:var(--blade);
+  transform:rotate(45deg);box-shadow:0 0 0 3px var(--blade-soft);flex:none;
+  align-self:center;
+}
+.brand h1{font-size:18px;font-weight:700;letter-spacing:-.01em;margin:0;white-space:nowrap}
+.brand .sub{font-size:11px;color:var(--muted);letter-spacing:.04em;white-space:nowrap}
+.tabs{display:flex;gap:6px;margin-left:8px}
+.tab{
+  font:inherit;font-size:13px;font-weight:600;color:var(--muted);
+  background:transparent;border:1px solid transparent;border-radius:9px;
+  padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;
+}
+.tab .n{font-family:ui-monospace, Menlo, Consolas, monospace;font-size:11px;color:var(--muted-2)}
+.tab[aria-selected="true"]{background:var(--mat-2);color:var(--chalk);border-color:var(--line)}
+.tab:hover:not([aria-selected="true"]){color:var(--chalk)}
+.spacer{flex:1}
+.counter{font-family:ui-monospace, Menlo, Consolas, monospace;font-size:12px;color:var(--muted);white-space:nowrap}
+.counter b{color:var(--blade)}
+
+/* ---------- layout ---------- */
+main{height:calc(100vh - 59px);position:relative}
+.view{position:absolute;inset:0;display:none}
+.view.active{display:flex}
+
+/* shared stage with ruler ticks */
+.stage{
+  flex:1;position:relative;overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/26px 26px,
+    linear-gradient(90deg,var(--grid) 1px, transparent 1px) 0 0/26px 26px,
+    var(--mat);
+}
+.stage::before,.stage::after{
+  content:"";position:absolute;pointer-events:none;z-index:3;
+}
+.stage::before{left:0;top:0;right:0;height:18px;
+  background:repeating-linear-gradient(90deg, var(--grid-bold) 0 1px, transparent 1px 26px);
+  border-bottom:1px solid var(--line);}
+.stage::after{left:0;top:0;bottom:0;width:18px;
+  background:repeating-linear-gradient(0deg, var(--grid-bold) 0 1px, transparent 1px 26px);
+  border-right:1px solid var(--line);}
+
+/* ---------- CUT view ---------- */
+#cut .toolbar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 16px;border-bottom:1px solid var(--line);
+  background:rgba(0,0,0,.10);
+}
+.tool-group{display:flex;gap:4px;background:rgba(0,0,0,.18);padding:4px;border-radius:10px}
+.tbtn{
+  font:inherit;font-size:13px;font-weight:600;color:var(--muted);
+  background:transparent;border:none;border-radius:7px;padding:7px 12px;cursor:pointer;
+  display:flex;align-items:center;gap:7px;
+}
+.tbtn svg{width:15px;height:15px}
+.tbtn[aria-pressed="true"]{background:var(--blade);color:#1a1410}
+.tbtn:hover:not([aria-pressed="true"]){color:var(--chalk)}
+.lbl-field{display:flex;align-items:center;gap:8px;margin-left:4px}
+.lbl-field input{
+  font:inherit;font-size:13px;color:var(--chalk);width:150px;
+  background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:8px;padding:8px 11px;
+}
+.lbl-field input:focus{outline:none;border-color:var(--blade)}
+.lbl-field input::placeholder{color:var(--muted-2)}
+.btn{
+  font:inherit;font-size:13px;font-weight:600;border-radius:9px;padding:8px 15px;cursor:pointer;
+  border:1px solid var(--line);background:var(--mat-2);color:var(--chalk);
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--blade);border-color:var(--blade);color:#1a1410}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger);border-color:rgba(240,88,106,.4)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn svg{width:15px;height:15px}
+
+.cut-body{display:flex;flex:1;min-height:0}
+.cut-stage{position:relative}
+#cut .stage{display:flex;align-items:center;justify-content:center}
+.canvas-wrap{position:relative;line-height:0;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+#srcCanvas{display:block;max-width:100%;max-height:100%}
+#drawCanvas{position:absolute;inset:0;cursor:crosshair}
+
+.dropzone{
+  width:min(560px,80%);aspect-ratio:16/10;border:2px dashed var(--line);border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  color:var(--muted);text-align:center;cursor:pointer;transition:.15s;background:rgba(0,0,0,.08);
+}
+.dropzone:hover,.dropzone.drag{border-color:var(--blade);color:var(--chalk);background:var(--blade-soft)}
+.dropzone .big{width:46px;height:46px;color:var(--blade)}
+.dropzone h2{margin:0;font-size:17px;color:var(--chalk);font-weight:600}
+.dropzone p{margin:0;font-size:13px;max-width:320px;line-height:1.5}
+.hint{font-size:11px;color:var(--muted-2);font-family:ui-monospace, Menlo, Consolas, monospace}
+
+/* tray (shared, sits in a sidebar) */
+.tray{
+  width:236px;flex:none;border-left:1px solid var(--line);display:flex;flex-direction:column;
+  background:rgba(0,0,0,.12);
+}
+.tray.left{border-left:none;border-right:1px solid var(--line)}
+.tray-head{padding:13px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.tray-head .t{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tray-list{flex:1;overflow:auto;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+.tray-empty{grid-column:1/-1;color:var(--muted-2);font-size:12px;text-align:center;padding:30px 8px;line-height:1.6}
+.piece{
+  border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#0d0d0f;cursor:grab;position:relative;
+  transition:.12s;
+}
+.piece:hover{border-color:var(--blade);transform:translateY(-1px)}
+.piece .thumb{
+  height:74px;display:flex;align-items:center;justify-content:center;
+  background-image:
+    linear-gradient(45deg,#3a3a3e 25%,transparent 25%),
+    linear-gradient(-45deg,#3a3a3e 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#3a3a3e 75%),
+    linear-gradient(-45deg,transparent 75%,#3a3a3e 75%);
+  background-size:14px 14px;background-position:0 0,0 7px,7px -7px,-7px 0;
+  background-color:#2a2a2e;
+}
+.piece .thumb img{max-width:88%;max-height:88%;object-fit:contain;image-rendering:auto}
+.piece .cap{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--mat-2)}
+.piece .cap .name{font-size:11px;color:var(--chalk);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.piece .cap button{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px;display:flex}
+.piece .cap button:hover{color:var(--blade)}
+.piece .cap button svg{width:13px;height:13px}
+.piece .add-badge{
+  position:absolute;top:6px;right:6px;background:var(--blade);color:#1a1410;font-size:10px;font-weight:700;
+  border-radius:6px;padding:3px 6px;opacity:0;transition:.12s;pointer-events:none;
+}
+.piece:hover .add-badge{opacity:1}
+
+/* ---------- COMPOSE view ---------- */
+#compose{display:none}
+#compose.active{display:flex}
+.compose-stage{position:relative}
+#compose .stage{display:flex;align-items:center;justify-content:center}
+.comp-canvas-shell{position:relative;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+#compCanvas{display:block;
+  background-image:
+    linear-gradient(45deg,#d9d6ce 25%,transparent 25%),
+    linear-gradient(-45deg,#d9d6ce 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#d9d6ce 75%),
+    linear-gradient(-45deg,transparent 75%,#d9d6ce 75%);
+  background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0;
+  background-color:#eceae3;max-width:100%;max-height:100%;
+}
+.inspector{
+  width:250px;flex:none;border-left:1px solid var(--line);display:flex;flex-direction:column;
+  background:rgba(0,0,0,.12);overflow:auto;
+}
+.insp-sec{padding:14px 16px;border-bottom:1px solid var(--line)}
+.insp-sec h3{margin:0 0 11px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.row:last-child{margin-bottom:0}
+.row label{font-size:12px;color:var(--muted);width:42px;flex:none}
+.row input[type=range]{flex:1;accent-color:var(--blade)}
+.row .val{font-family:ui-monospace, Menlo, Consolas, monospace;font-size:11px;color:var(--chalk);width:42px;text-align:right}
+.size-inputs{display:flex;align-items:center;gap:8px}
+.size-inputs input{
+  width:64px;font:inherit;font-size:12px;color:var(--chalk);
+  background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:7px;padding:6px 8px;
+}
+.size-inputs input:focus{outline:none;border-color:var(--blade)}
+.size-inputs span{color:var(--muted-2);font-size:12px}
+.preset-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font:inherit;font-size:11px;color:var(--muted);background:rgba(0,0,0,.2);border:1px solid var(--line);
+  border-radius:999px;padding:5px 10px;cursor:pointer}
+.chip:hover{color:var(--chalk);border-color:var(--muted)}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.btn-grid .btn{justify-content:center;padding:8px 6px;font-size:12px}
+.empty-insp{color:var(--muted-2);font-size:12px;line-height:1.6;text-align:center;padding:10px 4px}
+.bg-row{display:flex;gap:7px;align-items:center}
+.swatch{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);cursor:pointer;position:relative}
+.swatch.active{border-color:var(--blade);box-shadow:0 0 0 2px var(--blade-soft)}
+.swatch.trans{
+  background-image:
+    linear-gradient(45deg,#9a9a9a 25%,transparent 25%),
+    linear-gradient(-45deg,#9a9a9a 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#9a9a9a 75%),
+    linear-gradient(-45deg,transparent 75%,#9a9a9a 75%);
+  background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0;background-color:#cfcfcf;
+}
+input[type=color].swatch{padding:0;-webkit-appearance:none;appearance:none}
+input[type=color].swatch::-webkit-color-swatch-wrapper{padding:2px}
+input[type=color].swatch::-webkit-color-swatch{border:none;border-radius:5px}
+
+/* ---------- refine modal ---------- */
+.modal{position:fixed;inset:0;background:rgba(5,16,13,.72);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
+.modal.open{display:flex}
+.modal-card{background:var(--mat);border:1px solid var(--line);border-radius:18px;
+  width:min(820px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 30px 90px rgba(0,0,0,.6)}
+.modal-head{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.modal-head h3{margin:0;font-size:15px}
+.modal-head .x{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;padding:4px 8px}
+.modal-head .x:hover{color:var(--chalk)}
+.modal-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 18px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.1)}
+.modal-canvas-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/24px 24px,
+    linear-gradient(90deg,var(--grid) 1px, transparent 1px) 0 0/24px 24px, var(--mat-2);}
+.edit-canvas-frame{position:relative;line-height:0;
+  background-image:
+    linear-gradient(45deg,#3a3a3e 25%,transparent 25%),
+    linear-gradient(-45deg,#3a3a3e 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#3a3a3e 75%),
+    linear-gradient(-45deg,transparent 75%,#3a3a3e 75%);
+  background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;background-color:#2a2a2e;
+  box-shadow:0 14px 40px rgba(0,0,0,.4)}
+#editCanvas{display:block;max-width:100%;cursor:crosshair}
+.modal-foot{display:flex;gap:10px;padding:13px 18px;border-top:1px solid var(--line);align-items:center}
+.slider-mini{display:flex;align-items:center;gap:8px}
+.slider-mini label{font-size:11px;color:var(--muted)}
+.slider-mini input{width:100px;accent-color:var(--blade)}
+.slider-mini .v{font-family:ui-monospace, Menlo, Consolas, monospace;font-size:11px;color:var(--chalk);width:30px}
+
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:rgba(150,205,182,.18);border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(150,205,182,.3);background-clip:padding-box}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--mat-2);border:1px solid var(--line);color:var(--chalk);font-size:13px;
+  padding:11px 18px;border-radius:11px;box-shadow:0 14px 40px rgba(0,0,0,.4);opacity:0;
+  transition:.25s;pointer-events:none;z-index:100}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:760px){
+  .tray{width:170px}.inspector{width:200px}
+  .brand .sub{display:none}.lbl-field input{width:110px}
+}
+.pp-link{font:inherit;font-size:12px;color:var(--muted);background:transparent;border:1px solid var(--line);
+  border-radius:8px;padding:6px 11px;cursor:pointer;white-space:nowrap}
+.pp-link:hover{color:var(--chalk);border-color:var(--muted)}
+.priv-note{display:inline-flex;align-items:center;gap:6px;color:var(--blade)!important;margin-top:2px}
+.priv-note svg{width:12px;height:12px;flex:none}
+.privacy-body{padding:18px 20px;overflow:auto}
+.privacy-body .lead{margin:0 0 15px;font-size:14px;color:var(--chalk);line-height:1.55;font-weight:600}
+.pp-item{margin-bottom:13px}
+.pp-item h4{margin:0 0 3px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--blade)}
+.pp-item p{margin:0;font-size:13px;color:var(--muted);line-height:1.55}
+.privacy-body .fine{margin:15px 0 0;font-size:12px;color:var(--muted-2);line-height:1.5;border-top:1px solid var(--line);padding-top:12px}
+.snap-reach{display:flex;align-items:center;gap:7px}
+.snap-reach label{font-size:12px;color:var(--muted)}
+.snap-reach input{width:84px;accent-color:var(--blade)}
+.snap-reach .v{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--chalk);width:18px;text-align:right}
+.ai-btn{background:linear-gradient(135deg,#6E5BFF,#22B8C4);border:none;color:#fff}
+.ai-btn:hover{filter:brightness(1.08)}
+.ai-overlay{position:fixed;inset:0;background:rgba(5,16,13,.78);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:60;padding:24px}
+.ai-overlay.open{display:flex}
+.ai-card{background:var(--mat);border:1px solid var(--line);border-radius:16px;padding:26px 26px 20px;width:min(390px,100%);text-align:center;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+.ai-card h3{margin:14px 0 5px;font-size:15px}
+.ai-sub{margin:0 0 15px;font-size:12px;color:var(--muted);line-height:1.5}
+.ai-spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--blade);margin:0 auto;animation:aispin .8s linear infinite}
+@keyframes aispin{to{transform:rotate(360deg)}}
+.ai-bar{height:6px;background:rgba(0,0,0,.25);border-radius:99px;overflow:hidden;margin:0 0 14px}
+.ai-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#6E5BFF,#22B8C4);transition:width .2s}
+</style>
 </head>
 <body>
-<header class="site-header">
-  <a class="brand" href="/">Cut It Out<span>bg</span></a>
-  <nav>
-    <a href="/articles/remove-background-from-signature.html">Signature cutout</a>
-    <a href="/articles/make-logo-transparent.html">Logo cutout</a>
-    <a href="/articles/transparent-png-from-photo.html">Transparent PNG</a>
-    <a href="/privacy.html">Privacy</a>
-  </nav>
+<header>
+  <div class="brand">
+    <span class="knife"></span>
+    <h1>cutitoutbg.com</h1>
+    <span class="sub mono">CUT · REFINE · COMPOSE</span>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" id="tab-cut" role="tab" aria-selected="true" onclick="setMode('cut')">
+      <span class="n">01</span> Cut out
+    </button>
+    <button class="tab" id="tab-compose" role="tab" aria-selected="false" onclick="setMode('compose')">
+      <span class="n">02</span> Compose
+    </button>
+  </div>
+  <div class="spacer"></div>
+  <div class="counter"><b id="pieceCount">0</b> pieces</div>
+  <button class="pp-link" onclick="openPrivacy()">Privacy</button>
 </header>
 
 <main>
-  <section class="hero">
-    <h1>Free background remover that never uploads your image</h1>
-    <p class="lede">Make a transparent PNG in your browser — no signup, no upload, no watermark.
-    Your image is processed entirely on your device and disappears the moment you close the tab.</p>
-  </section>
-
-  <!-- The tool: the default landing experience, zero-latency manual path -->
-  <section id="tool" class="tool">
-    <div class="toolbar" id="toolbar">
-      <label class="dropzone" id="dropzone">
-        <input type="file" id="fileInput" accept="image/*" hidden>
-        <span>Drop an image or click to choose</span>
-      </label>
-      <div class="tools" hidden id="toolButtons">
-        <button data-tool="wand" class="tool-btn active" title="Click a color region to erase it">Magic Wand</button>
-        <button data-tool="erase" class="tool-btn" title="Brush to erase pixels">Eraser</button>
-        <button data-tool="restore" class="tool-btn" title="Brush to bring pixels back">Restore</button>
-        <span class="control">
-          <label for="tolerance">Wand tolerance</label>
-          <input type="range" id="tolerance" min="0" max="120" value="30">
-        </span>
-        <span class="control">
-          <label for="brushSize">Brush</label>
-          <input type="range" id="brushSize" min="4" max="120" value="30">
-        </span>
-        <button id="undoBtn" title="Undo last action">Undo</button>
-        <button id="resetBtn" title="Reload original image">Reset</button>
-        <button id="exportPng" class="primary">Export PNG</button>
-        <button id="exportWhite">Export on White</button>
+  <!-- ===== CUT ===== -->
+  <section class="view active" id="cut">
+    <div class="cut-stage" style="flex:1;display:flex;flex-direction:column;min-width:0">
+      <div class="toolbar">
+        <div class="tool-group">
+          <button class="tbtn" id="toolLasso" aria-pressed="true" onclick="setTool('lasso')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5c0-1.5 4-3 9-3s9 1.5 9 4-4 4-9 4-7 1-7 2.5 1.5 2 3 2"/><circle cx="8" cy="20" r="2"/></svg>
+            Lasso
+          </button>
+          <button class="tbtn" id="toolRect" aria-pressed="false" onclick="setTool('rect')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1" stroke-dasharray="3 3"/></svg>
+            Rectangle
+          </button>
+          <button class="tbtn" id="toolCircle" aria-pressed="false" onclick="setTool('circle')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>
+            Circle
+          </button>
+        </div>
+        <div class="tool-group">
+          <button class="tbtn" id="snapToggle" aria-pressed="true" onclick="toggleSnap()" title="Auto-snap the lasso to the shape it's drawn around">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3H2v6a10 10 0 0 0 20 0V3h-4"/><path d="M6 3v6a6 6 0 0 0 12 0V3"/><line x1="2" y1="9" x2="6" y2="9"/><line x1="18" y1="9" x2="22" y2="9"/></svg>
+            Auto-snap
+          </button>
+        </div>
+        <div class="snap-reach" id="snapReachWrap" title="How far the snap searches for an edge">
+          <label>Reach</label>
+          <input id="snapReach" type="range" min="8" max="48" step="2" value="22" oninput="setSnapReach(this.value)">
+          <span class="v" id="snapReachV">22</span>
+        </div>
+        <div class="lbl-field">
+          <input id="labelInput" type="text" placeholder="Label (e.g. Hyaluronic Acid)" autocomplete="off">
+        </div>
+        <button class="btn primary" id="cutBtn" onclick="finalizeCut()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+          Cut out
+        </button>
+        <button class="btn ghost" id="undoBtn" onclick="undoRegion()" disabled>↶ Undo</button>
+        <button class="btn ghost" id="clearSelBtn" onclick="clearSelection()" disabled>Clear</button>
+        <span class="hint" id="regionCount" style="margin-left:2px"></span>
+        <button class="btn ai-btn" id="aiBtn" onclick="aiCutout()" title="One-click cutout of the whole subject using an AI model (downloads a model on first use)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"/></svg>
+          AI cutout
+        </button>
+        <div class="spacer" style="flex:1"></div>
+        <button class="btn ghost" id="changeImgBtn" onclick="triggerUpload()" style="display:none">Change image</button>
+      </div>
+      <div class="stage" id="cutStage">
+        <div class="dropzone" id="dropzone" onclick="triggerUpload()">
+          <svg class="big" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <h2>Drop an image to start</h2>
+          <p>Drag &amp; drop an image here, or click to upload. Combine lasso, rectangle and circle selections, drag any of them to reposition (or drag a lasso’s edge to extend/shrink it), then cut them out as one piece.</p>
+          <span class="hint">PNG · JPG · WEBP</span>
+          <span class="hint priv-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Images never leave your device — everything runs locally.</span>
+        </div>
+        <div class="canvas-wrap" id="canvasWrap" style="display:none">
+          <canvas id="srcCanvas"></canvas>
+          <canvas id="drawCanvas"></canvas>
+        </div>
       </div>
     </div>
+    <aside class="tray" id="trayCut">
+      <div class="tray-head"><span class="t">Cutout pieces</span>
+        <button class="btn ghost danger" style="padding:5px 10px;font-size:11px" onclick="clearAllPieces()">Clear all</button>
+      </div>
+      <div class="tray-list" id="trayListCut"></div>
+    </aside>
+  </section>
 
-    <div class="canvas-wrap" id="canvasWrap">
-      <canvas id="canvas"></canvas>
-      <p class="canvas-hint" id="canvasHint">Your cutout preview appears here.</p>
+  <!-- ===== COMPOSE ===== -->
+  <section class="view" id="compose">
+    <aside class="tray left" id="trayCompose">
+      <div class="tray-head"><span class="t">Piece library</span></div>
+      <div class="tray-list" id="trayListCompose"></div>
+    </aside>
+    <div class="compose-stage" style="flex:1;display:flex;flex-direction:column;min-width:0">
+      <div class="toolbar" style="border-bottom:1px solid var(--line)">
+        <span class="hint">Click or drag a piece onto the canvas · drag to move · corner to resize · top handle to rotate</span>
+        <div class="spacer" style="flex:1"></div>
+        <button class="btn primary" onclick="exportImage()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export PNG
+        </button>
+      </div>
+      <div class="stage" id="compStage">
+        <div class="comp-canvas-shell">
+          <canvas id="compCanvas" width="1200" height="800"></canvas>
+        </div>
+      </div>
     </div>
+    <aside class="inspector" id="inspector">
+      <div class="insp-sec">
+        <h3>Canvas</h3>
+        <div class="size-inputs">
+          <input id="cw" type="number" min="64" max="4096" value="1200">
+          <span>×</span>
+          <input id="ch" type="number" min="64" max="4096" value="800">
+          <button class="btn ghost" style="padding:6px 11px;font-size:12px" onclick="applyCanvasSize()">Apply</button>
+        </div>
+        <div class="preset-row">
+          <button class="chip" onclick="presetSize(1200,800)">3:2</button>
+          <button class="chip" onclick="presetSize(1080,1080)">Square</button>
+          <button class="chip" onclick="presetSize(1080,1920)">Portrait</button>
+          <button class="chip" onclick="presetSize(1920,1080)">Landscape</button>
+        </div>
+        <h3 style="margin-top:16px">Background</h3>
+        <div class="bg-row">
+          <div class="swatch trans active" id="bgTrans" title="Transparent" onclick="setBg(null)"></div>
+          <div class="swatch" style="background:#ffffff" onclick="setBg('#ffffff')" title="White"></div>
+          <div class="swatch" style="background:#101010" onclick="setBg('#101010')" title="Black"></div>
+          <input type="color" class="swatch" id="bgPicker" value="#ff6a3d" oninput="setBg(this.value)" title="Pick color">
+        </div>
+      </div>
+      <div class="insp-sec" id="selPanel">
+        <h3>Selected piece</h3>
+        <div class="empty-insp" id="noSel">Select a piece on the canvas<br>to adjust it here.</div>
+        <div id="selControls" style="display:none">
+          <div class="row"><label>Size</label><input id="scaleR" type="range" min="5" max="400" value="100" oninput="onScale(this.value)"><span class="val" id="scaleV">100%</span></div>
+          <div class="row"><label>Rotate</label><input id="rotR" type="range" min="-180" max="180" value="0" oninput="onRotate(this.value)"><span class="val" id="rotV">0°</span></div>
+          <div class="row"><label>Opacity</label><input id="alphaR" type="range" min="10" max="100" value="100" oninput="onAlpha(this.value)"><span class="val" id="alphaV">100%</span></div>
+          <div class="btn-grid" style="margin-top:12px">
+            <button class="btn ghost" onclick="layer(1)">Forward</button>
+            <button class="btn ghost" onclick="layer(-1)">Back</button>
+            <button class="btn ghost" onclick="flipSel()">Flip</button>
+            <button class="btn ghost" onclick="dupSel()">Duplicate</button>
+          </div>
+          <button class="btn danger" style="width:100%;justify-content:center;margin-top:8px" onclick="delSel()">Delete</button>
+        </div>
+      </div>
+    </aside>
   </section>
-
-  <!-- Non-intrusive ad, below the tool, not over the canvas -->
-  <aside class="ad-slot">
-    <ins class="adsbygoogle"
-         style="display:block"
-         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-         data-ad-slot="0000000000"
-         data-ad-format="auto"
-         data-full-width-responsive="true"></ins>
-    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-  </aside>
-
-  <section class="content">
-    <h2>Remove a background without uploading anything</h2>
-    <p>Most background removers send your photo to a server. Cut It Out doesn't. Everything —
-    loading, erasing, refining, and exporting — happens inside your browser using the
-    HTML canvas. There is no account to create and no file to upload, which means your
-    picture is never stored, logged, or seen by us. When you close the tab, it's gone.</p>
-
-    <h2>How the manual cutout works</h2>
-    <ol>
-      <li><strong>Drop your image.</strong> Drag it onto the editor or click to pick a file.</li>
-      <li><strong>Magic Wand.</strong> Click a background area and connected pixels of a similar
-      color are erased. Raise the tolerance for gradients and shadows; lower it for fine detail.</li>
-      <li><strong>Eraser &amp; Restore.</strong> Paint away leftover fringes, or restore pixels you
-      removed by mistake.</li>
-      <li><strong>Export.</strong> Save a transparent PNG, or flatten onto a white background if
-      you need a solid backdrop.</li>
-    </ol>
-
-    <h2>When manual beats one-click</h2>
-    <p>Automatic AI removers are great on clean portraits but stumble on screenshots, logos on
-    white, signatures, product shots with clutter, and fine hair. A quick manual pass gives you
-    precise control the automatic tools can't — and it's instant, with nothing to download.</p>
-
-    <h3>Frequently asked questions</h3>
-    <details><summary>Is it really free?</summary><p>Yes. No signup, no watermark, no upload.</p></details>
-    <details><summary>Do you keep my image?</summary><p>No. Processing is 100% in your browser. We never receive the file.</p></details>
-    <details><summary>What formats can I export?</summary><p>Transparent PNG, or PNG flattened on a white background.</p></details>
-  </section>
-
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      { "@type": "Question", "name": "Is it really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. No signup, no watermark, and no upload." } },
-      { "@type": "Question", "name": "Do you keep my image?", "acceptedAnswer": { "@type": "Answer", "text": "No. Processing is 100% in your browser. We never receive the file." } },
-      { "@type": "Question", "name": "What formats can I export?", "acceptedAnswer": { "@type": "Answer", "text": "Transparent PNG, or PNG flattened on a white background." } }
-    ]
-  }
-  </script>
 </main>
 
-<footer class="site-footer">
-  <p>© <span id="year"></span> cutitoutbg.com · <a href="/privacy.html">Privacy</a> · Runs entirely in your browser.</p>
-</footer>
+<!-- refine modal -->
+<div class="modal" id="refineModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="refineTitle">Refine piece</h3>
+      <button class="x" onclick="closeRefine()">×</button>
+    </div>
+    <div class="modal-tools">
+      <div class="tool-group">
+        <button class="tbtn" id="rfWand" aria-pressed="true" onclick="setRefineTool('wand')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M15 9h0M17.8 6.2 19 5M3 21l9-9M12.2 6.2 11 5"/></svg>
+          Magic wand
+        </button>
+        <button class="tbtn" id="rfEraser" aria-pressed="false" onclick="setRefineTool('eraser')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l9.6-9.6a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L13 21"/><path d="M22 21H7"/></svg>
+          Eraser
+        </button>
+      </div>
+      <div class="slider-mini" id="tolWrap">
+        <label>Tolerance</label><input id="tolR" type="range" min="5" max="120" value="40"><span class="v" id="tolV">40</span>
+      </div>
+      <div class="slider-mini" id="brushWrap" style="display:none">
+        <label>Brush</label><input id="brushR" type="range" min="4" max="80" value="22"><span class="v" id="brushV">22</span>
+      </div>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn ghost" onclick="refineUndo()">Undo</button>
+      <button class="btn ghost" onclick="refineReset()">Reset</button>
+    </div>
+    <div class="modal-canvas-wrap">
+      <div class="edit-canvas-frame"><canvas id="editCanvas"></canvas></div>
+    </div>
+    <div class="modal-foot">
+      <span class="hint" id="refineHint">Click the background with the magic wand to erase similar colors.</span>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn" onclick="closeRefine()">Cancel</button>
+      <button class="btn primary" onclick="saveRefine()">Done</button>
+    </div>
+  </div>
+</div>
 
-<script src="/js/tool.js"></script>
+<!-- privacy modal -->
+<div class="modal" id="privacyModal">
+  <div class="modal-card" style="max-width:600px">
+    <div class="modal-head">
+      <h3>Privacy</h3>
+      <button class="x" onclick="closePrivacy()">×</button>
+    </div>
+    <div class="privacy-body">
+      <p class="lead">cutitoutbg.com runs entirely in your browser. Your images never leave your device.</p>
+      <div class="pp-item"><h4>No uploads</h4><p>Every image you open, cut, refine, and export is processed locally by your own browser. Nothing is ever sent to a server.</p></div>
+      <div class="pp-item"><h4>Nothing is stored</h4><p>Images and pieces exist only in your browser's memory while this page is open. Closing or refreshing the tab erases everything — there is no database, no cloud, and no account.</p></div>
+      <div class="pp-item"><h4>No tracking</h4><p>By default this page sets no cookies and loads no third-party scripts, fonts, or analytics.</p></div>
+      <div class="pp-item"><h4>Optional AI cutout</h4><p>Only if you click \u201cAI cutout\u201d, the app downloads an open-source AI model (BiRefNet, MIT-licensed) from a public CDN (jsDelivr / Hugging Face) to your browser the first time, then caches it. Your image is still processed entirely on your device and is never uploaded \u2014 only the model is fetched.</p></div>
+      <div class="pp-item"><h4>Exports stay with you</h4><p>"Export PNG" builds the file in your browser and saves it straight to your device.</p></div>
+      <p class="fine">Because everything happens on your device, we never see your images and could not retrieve them even if asked.</p>
+    </div>
+    <div class="modal-foot"><div class="spacer" style="flex:1"></div><button class="btn primary" onclick="closePrivacy()">Got it</button></div>
+  </div>
+</div>
+
+<!-- AI cutout progress -->
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-card">
+    <div class="ai-spinner"></div>
+    <h3 id="aiTitle">Loading AI model…</h3>
+    <div class="ai-bar"><div class="ai-bar-fill" id="aiBar"></div></div>
+    <p class="ai-sub" id="aiSub">First run downloads an open-source model to your browser, then it's cached. Your image stays on your device.</p>
+    <button class="btn ghost" onclick="hideAI()" style="padding:6px 14px;font-size:12px">Hide</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+/* cutitoutbg.com is client-side by default: no uploads, no storage, no cookies, no third-party calls.
+   Opened images exist only as in-memory canvases for the current tab and vanish on refresh/close.
+   The optional 'AI cutout' button (opt-in) downloads an open-source model from a CDN when used;
+   the image itself is still processed locally and never uploaded. */
+/* ============================== state ============================== */
+const S = {
+  mode:'cut',
+  tool:'lasso',
+  srcCanvas:null,        // full-res source
+  fitScale:1,            // display/natural
+  poly:[],               // lasso points (display coords)
+  regions:[],            // committed sub-shapes that combine into ONE cutout
+  regionSel:null,        // index of region selected for moving
+  snap:true,             // auto-snap lasso to the shape under it
+  snapReach:22,          // magnetic-snap search distance (px)
+  _bgModel:null, _bgProc:null, _TJS:null,  // lazily-loaded AI model + processor (transformers.js)
+  rect:null,             // {x0,y0,x1,y1} display coords
+  drag:false,
+  pieces:[],             // {id,label,canvas}
+  instances:[],          // {id,pieceId,x,y,scale,rot,flipX,alpha,z}
+  sel:null,
+  bg:null,
+  nextId:1,
+};
+const $ = id => document.getElementById(id);
+const toast = (m)=>{const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1900);};
+
+/* ============================== mode / tool ============================== */
+function setMode(m){
+  S.mode=m;
+  $('cut').classList.toggle('active',m==='cut');
+  $('compose').classList.toggle('active',m==='compose');
+  $('tab-cut').setAttribute('aria-selected',m==='cut');
+  $('tab-compose').setAttribute('aria-selected',m==='compose');
+  if(m==='compose'){ renderComposeTray(); resizeCompCanvasDisplay(); drawCompose(); }
+}
+function setTool(t){
+  S.tool=t;
+  $('toolLasso').setAttribute('aria-pressed',t==='lasso');
+  $('toolRect').setAttribute('aria-pressed',t==='rect');
+  $('toolCircle').setAttribute('aria-pressed',t==='circle');
+  // switching tools keeps committed regions; only the half-drawn shape is dropped
+  S.poly=[]; S.rect=null; freehand=false; S.drag=false; S.regionSel=null; S._sculpt=null; S._moving=false; S._hoverBrush=null;
+  const dc=$('drawCanvas'); if(dc) dc.style.cursor='crosshair';
+  refreshCutButtons(); if(S.srcCanvas)redrawOverlay();
+}
+
+/* ============================== upload ============================== */
+$('fileInput').addEventListener('change',e=>{ if(e.target.files[0]) loadImage(e.target.files[0]); e.target.value=''; });
+function triggerUpload(){ $('fileInput').click(); }
+const dz=$('dropzone');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+dz.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))loadImage(f);});
+window.addEventListener('dragover',e=>e.preventDefault());
+window.addEventListener('drop',e=>{ if(S.mode==='cut'&&e.dataTransfer.files[0]&&e.dataTransfer.files[0].type.startsWith('image/')){e.preventDefault();loadImage(e.dataTransfer.files[0]);}});
+
+function loadImage(file){
+  const img=new Image();
+  img.onload=()=>{
+    const c=document.createElement('canvas');
+    c.width=img.naturalWidth; c.height=img.naturalHeight;
+    c.getContext('2d').drawImage(img,0,0);
+    S.srcCanvas=c;
+    URL.revokeObjectURL(img.src); // release the temp blob URL; pixels now live only in an in-memory canvas
+    $('dropzone').style.display='none';
+    $('canvasWrap').style.display='block';
+    $('changeImgBtn').style.display='inline-flex';
+    layoutSource();
+    clearSelection();
+    toast('Image loaded — start cutting out pieces!');
+  };
+  img.onerror=()=>toast('Could not load that image.');
+  img.src=URL.createObjectURL(file);
+}
+
+function layoutSource(){
+  if(!S.srcCanvas)return;
+  const stage=$('cutStage');
+  const pad=48;
+  const maxW=stage.clientWidth-pad, maxH=stage.clientHeight-pad;
+  const nw=S.srcCanvas.width, nh=S.srcCanvas.height;
+  const scale=Math.min(maxW/nw, maxH/nh, 1.6);
+  S.fitScale=scale;
+  const dw=Math.round(nw*scale), dh=Math.round(nh*scale);
+  const sc=$('srcCanvas'), dc=$('drawCanvas');
+  sc.width=dw; sc.height=dh; sc.style.width=dw+'px'; sc.style.height=dh+'px';
+  dc.width=dw; dc.height=dh; dc.style.width=dw+'px'; dc.style.height=dh+'px';
+  sc.getContext('2d').drawImage(S.srcCanvas,0,0,dw,dh);
+  redrawOverlay();
+}
+window.addEventListener('resize',()=>{ if(S.mode==='cut')layoutSource(); else resizeCompCanvasDisplay(); if(S.mode==='compose')drawCompose(); });
+
+/* ============================== drawing selection ============================== */
+const draw=$('drawCanvas');
+let freehand=false;
+function dpt(e){const r=draw.getBoundingClientRect();return {x:e.clientX-r.left, y:e.clientY-r.top};}
+draw.addEventListener('pointerdown',e=>{
+  if(!S.srcCanvas)return;
+  const p=dpt(e);
+  // hold Alt to force-draw a new shape instead of grabbing
+  if(!e.altKey){
+    const le=nearLassoEdge(p);
+    if(le!=null){ S.regionSel=le; S._sculpt={idx:le}; S._sculptLast={x:p.x,y:p.y}; S._hoverBrush=null; draw.setPointerCapture(e.pointerId); refreshCutButtons(); redrawOverlay(); return; }
+    const idx=hitRegion(p);
+    if(idx!=null){ S.regionSel=idx; S._moving=true; S._moveLast={x:p.x,y:p.y}; S._hoverBrush=null; draw.setPointerCapture(e.pointerId); refreshCutButtons(); redrawOverlay(); return; }
+  }
+  S.regionSel=null; S._hoverBrush=null;
+  if(S.tool==='lasso'){
+    S.poly=[p]; freehand=true; draw.setPointerCapture(e.pointerId); refreshCutButtons(); redrawOverlay();
+  }else{
+    S.drag=true; S.rect={x0:p.x,y0:p.y,x1:p.x,y1:p.y}; draw.setPointerCapture(e.pointerId); refreshCutButtons(); redrawOverlay();
+  }
+});
+draw.addEventListener('pointermove',e=>{
+  const p=dpt(e);
+  if(S._sculpt){
+    const reg=S.regions[S._sculpt.idx];
+    if(reg){ const dx=p.x-S._sculptLast.x, dy=p.y-S._sculptLast.y; sculptLasso(reg,S._sculptLast.x,S._sculptLast.y,dx,dy); S._sculptLast={x:p.x,y:p.y}; }
+    S._hoverBrush={x:p.x,y:p.y}; redrawOverlay();
+    return;
+  }
+  if(S._moving){
+    if(S.regionSel!=null){ const dx=p.x-S._moveLast.x, dy=p.y-S._moveLast.y; translateRegion(S.regions[S.regionSel],dx,dy); S._moveLast={x:p.x,y:p.y}; redrawOverlay(); }
+    return;
+  }
+  if(S.tool==='lasso'&&freehand){
+    const last=S.poly[S.poly.length-1];
+    if(!last || Math.hypot(p.x-last.x,p.y-last.y)>=2.5){ S.poly.push(p); refreshCutButtons(); redrawOverlay(); }
+  }
+  else if(S.drag&&S.rect){
+    let ex=p.x, ey=p.y;
+    if(e.shiftKey){ const dx=p.x-S.rect.x0, dy=p.y-S.rect.y0; const s=Math.max(Math.abs(dx),Math.abs(dy));
+      ex=S.rect.x0+(dx<0?-s:s); ey=S.rect.y0+(dy<0?-s:s); }
+    S.rect.x1=ex; S.rect.y1=ey; refreshCutButtons(); redrawOverlay();
+  }
+  else {
+    // hover affordance: edge of a lasso = reshape, body = move, empty = draw
+    let cur='crosshair'; S._hoverBrush=null;
+    if(!e.altKey && S.regions.length){
+      if(nearLassoEdge(p)!=null){ cur='grab'; S._hoverBrush={x:p.x,y:p.y}; }
+      else if(hitRegion(p)!=null){ cur='move'; }
+    }
+    draw.style.cursor=cur; redrawOverlay();
+  }
+});
+draw.addEventListener('pointerleave',()=>{ if(!S._sculpt&&!S._moving&&!freehand&&!S.drag&&S._hoverBrush){ S._hoverBrush=null; redrawOverlay(); } });
+draw.addEventListener('pointerup',()=>{
+  if(S._sculpt){ S._sculpt=null; S._sculptLast=null; S._hoverBrush=null; refreshCutButtons(); redrawOverlay(); return; }
+  if(S._moving){ S._moving=false; S._moveLast=null; refreshCutButtons(); return; }
+  if(S.tool==='lasso'&&freehand){
+    freehand=false;
+    if(S.poly.length>=3){ S.regions.push({type:'lasso', pts:S.poly.slice()}); if(S.snap){ if(autoSnapRegion(S.regions.length-1)) toast('Snapped to the shape'); } }
+    S.poly=[];
+  } else if(S.drag){
+    S.drag=false;
+    if(S.rect){ const r=normRect(S.rect); if(r.w>4&&r.h>4) S.regions.push({type:S.tool, rect:{x0:S.rect.x0,y0:S.rect.y0,x1:S.rect.x1,y1:S.rect.y1}}); S.rect=null; }
+  }
+  refreshCutButtons(); redrawOverlay();
+});
+draw.addEventListener('dblclick',()=>{ if(S.regions.length) finalizeCut(); });
+
+function addOverlayPath(ctx,reg){
+  if(reg.type==='lasso'){ const p=reg.pts; ctx.moveTo(p[0].x,p[0].y); for(let i=1;i<p.length;i++)ctx.lineTo(p[i].x,p[i].y); ctx.closePath(); }
+  else { const {x,y,w,h}=normRect(reg.rect);
+    if(reg.type==='rect'){ ctx.rect(x,y,w,h); }
+    else { ctx.moveTo(x+w,y+h/2); ctx.ellipse(x+w/2,y+h/2,Math.max(w/2,.1),Math.max(h/2,.1),0,0,7); } }
+}
+function pointInPoly(p,pts){ let inside=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y; const inter=((yi>p.y)!==(yj>p.y))&&(p.x<(xj-xi)*(p.y-yi)/((yj-yi)||1e-9)+xi); if(inter)inside=!inside; } return inside; }
+function regionContains(reg,p){
+  if(reg.type==='lasso') return pointInPoly(p,reg.pts);
+  const {x,y,w,h}=normRect(reg.rect);
+  if(reg.type==='rect') return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;
+  const rx=w/2,ry=h/2; if(rx<=0||ry<=0)return false;
+  const dx=(p.x-(x+rx))/rx, dy=(p.y-(y+ry))/ry; return dx*dx+dy*dy<=1;
+}
+function hitRegion(p){ for(let i=S.regions.length-1;i>=0;i--){ if(regionContains(S.regions[i],p)) return i; } return null; }
+function translateRegion(reg,dx,dy){ if(reg.type==='lasso'){ for(const pt of reg.pts){ pt.x+=dx; pt.y+=dy; } } else { reg.rect.x0+=dx; reg.rect.x1+=dx; reg.rect.y0+=dy; reg.rect.y1+=dy; } }
+const EDGE_TOL=10, BRUSH_R=14;   // px (display) for grabbing & sculpting a lasso edge
+function distToSeg(p,a,b){ const vx=b.x-a.x,vy=b.y-a.y, wx=p.x-a.x,wy=p.y-a.y; const c1=vx*wx+vy*wy; if(c1<=0)return Math.hypot(wx,wy); const c2=vx*vx+vy*vy; if(c2<=c1)return Math.hypot(p.x-b.x,p.y-b.y); const t=c1/c2; return Math.hypot(p.x-(a.x+t*vx), p.y-(a.y+t*vy)); }
+function nearLassoEdge(p){ for(let i=S.regions.length-1;i>=0;i--){ const reg=S.regions[i]; if(reg.type!=='lasso')continue; const pts=reg.pts; for(let j=0;j<pts.length;j++){ if(distToSeg(p,pts[j],pts[(j+1)%pts.length])<EDGE_TOL) return i; } } return null; }
+function sculptLasso(reg,cx,cy,dx,dy){ const R=BRUSH_R; for(const pt of reg.pts){ const d=Math.hypot(pt.x-cx,pt.y-cy); if(d<R){ const w=(1-d/R)*(1-d/R); pt.x+=dx*w; pt.y+=dy*w; } } }
+function redrawOverlay(){
+  const ctx=draw.getContext('2d');
+  ctx.clearRect(0,0,draw.width,draw.height);
+  // already-committed regions (the combined selection so far)
+  if(S.regions.length){
+    // fill each region on its own path so overlapping shapes drawn with opposite
+    // winding direction don't cancel each other out under the nonzero fill rule
+    // (a single combined path could "hole out" the overlap even though the actual
+    // cutout in finalizeCut() always unions correctly)
+    ctx.fillStyle='rgba(255,106,61,.18)';
+    for(const reg of S.regions){ ctx.beginPath(); addOverlayPath(ctx,reg); ctx.fill('nonzero'); }
+    ctx.beginPath();
+    for(const reg of S.regions) addOverlayPath(ctx,reg);
+    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=2; ctx.strokeStyle='#FF6A3D'; ctx.setLineDash([]); ctx.stroke();
+    if(S.regionSel!=null&&S.regions[S.regionSel]){
+      ctx.beginPath(); addOverlayPath(ctx,S.regions[S.regionSel]);
+      ctx.fillStyle='rgba(255,106,61,.30)'; ctx.fill('nonzero');
+      ctx.setLineDash([]); ctx.lineWidth=4; ctx.strokeStyle='#fff'; ctx.stroke();
+      ctx.lineWidth=2; ctx.strokeStyle='#FF6A3D'; ctx.stroke();
+    }
+  }
+  if(S.tool==='lasso'&&S.poly.length){
+    // filled region (closed back to start)
+    ctx.beginPath();
+    ctx.moveTo(S.poly[0].x,S.poly[0].y);
+    for(let i=1;i<S.poly.length;i++)ctx.lineTo(S.poly[i].x,S.poly[i].y);
+    ctx.closePath();
+    ctx.fillStyle='rgba(255,106,61,.12)'; ctx.fill();
+    // freehand outline (smooth)
+    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=2; ctx.strokeStyle='#FF6A3D'; ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(S.poly[0].x,S.poly[0].y);
+    for(let i=1;i<S.poly.length;i++)ctx.lineTo(S.poly[i].x,S.poly[i].y);
+    ctx.stroke();
+    // dashed closing segment
+    if(S.poly.length>2){
+      ctx.setLineDash([5,4]); ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(S.poly[S.poly.length-1].x,S.poly[S.poly.length-1].y);
+      ctx.lineTo(S.poly[0].x,S.poly[0].y); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // start dot
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(S.poly[0].x,S.poly[0].y,4,0,7); ctx.fill();
+    ctx.strokeStyle='#FF6A3D'; ctx.lineWidth=2; ctx.stroke();
+  }
+  if(S.tool==='rect'&&S.rect){
+    const {x,y,w,h}=normRect(S.rect);
+    ctx.strokeStyle='#FF6A3D'; ctx.lineWidth=2; ctx.setLineDash([6,4]); ctx.strokeRect(x,y,w,h);
+    ctx.setLineDash([]); ctx.fillStyle='rgba(255,106,61,.12)'; ctx.fillRect(x,y,w,h);
+  }
+  if(S.tool==='circle'&&S.rect){
+    const {x,y,w,h}=normRect(S.rect);
+    ctx.strokeStyle='#FF6A3D'; ctx.lineWidth=2; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.ellipse(x+w/2,y+h/2,Math.max(w/2,.1),Math.max(h/2,.1),0,0,7); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle='rgba(255,106,61,.12)';
+    ctx.beginPath(); ctx.ellipse(x+w/2,y+h/2,Math.max(w/2,.1),Math.max(h/2,.1),0,0,7); ctx.fill();
+    ctx.strokeStyle='#FF6A3D'; ctx.lineWidth=1; ctx.setLineDash([2,3]); ctx.strokeRect(x,y,w,h); ctx.setLineDash([]);
+  }
+  if(S._hoverBrush){
+    ctx.beginPath(); ctx.arc(S._hoverBrush.x,S._hoverBrush.y,BRUSH_R,0,7);
+    ctx.setLineDash([4,4]); ctx.lineWidth=1.5; ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+function normRect(r){const x=Math.min(r.x0,r.x1),y=Math.min(r.y0,r.y1);return {x,y,w:Math.abs(r.x1-r.x0),h:Math.abs(r.y1-r.y0)};}
+function clearSelection(){ S.poly=[]; S.rect=null; S.regions=[]; S.regionSel=null; S._sculpt=null; S._moving=false; S._hoverBrush=null; freehand=false; S.drag=false; refreshCutButtons(); if(S.srcCanvas)redrawOverlay(); }
+function undoRegion(){ if(S.regions.length){ S.regions.pop(); S.regionSel=null; refreshCutButtons(); redrawOverlay(); } }
+function refreshCutButtons(){
+  const r=S.rect?normRect(S.rect):null;
+  const inProg=(S.tool==='lasso'&&S.poly.length>=3)||(S.tool!=='lasso'&&r&&r.w>4&&r.h>4);
+  const n=S.regions.length;
+  $('cutBtn').disabled=!(n||inProg);
+  $('undoBtn').disabled=!n;
+  $('clearSelBtn').disabled=!(n||S.poly.length||S.rect);
+  const rc=$('regionCount');
+  if(rc){
+    if(S.regionSel!=null){ const reg=S.regions[S.regionSel];
+      rc.textContent = (reg&&reg.type==='lasso') ? 'Lasso selected \u2014 drag its edge to reshape, body to move' : 'Region selected \u2014 drag or use arrow keys';
+    }
+    else rc.textContent = n ? (n+' region'+(n>1?'s':'')+' \u2014 add more, or drag to move/reshape') : '';
+  }
+}
+
+/* ============================== finalize cut ============================== */
+function toggleSnap(){ S.snap=!S.snap; $('snapToggle').setAttribute('aria-pressed',S.snap); const w=$('snapReachWrap'); if(w) w.style.display=S.snap?'flex':'none'; toast(S.snap?'Auto-snap on':'Auto-snap off'); }
+function setSnapReach(v){ S.snapReach=+v; $('snapReachV').textContent=v; }
+function showAI(t,s){ $('aiTitle').textContent=t; if(s!=null)$('aiSub').textContent=s; setBar(0); $('aiOverlay').classList.add('open'); }
+function setStage(t,s){ $('aiTitle').textContent=t; if(s!=null)$('aiSub').textContent=s; }
+function setBar(pct){ const b=$('aiBar'); if(b) b.style.width=(pct||0)+'%'; }
+function hideAI(){ $('aiOverlay').classList.remove('open'); }
+// Optional, opt-in AI cutout. Uses Transformers.js (Apache-2.0) + the BiRefNet model
+// (MIT licence) from a public CDN. The image is processed locally; only the model is
+// downloaded. No AGPL \u2014 free for commercial use.
+async function aiCutout(){
+  if(!S.srcCanvas){ toast('Load an image first.'); return; }
+  showAI('Loading AI model\u2026','First run downloads an open-source model to your browser, then it\u2019s cached. Your image stays on your device.');
+  try{
+    if(!S._bgModel){
+      const TJS=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3');
+      S._TJS=TJS;
+      const useGPU=!!(navigator.gpu);
+      const opts={ dtype: useGPU?'fp16':'fp32', device: useGPU?'webgpu':'wasm',
+        progress_callback:(p)=>{ if(p&&p.status==='progress'&&typeof p.progress==='number'){ const pct=Math.round(p.progress); setStage('Downloading model\u2026 '+pct+'%',null); setBar(pct); } } };
+      S._bgModel=await TJS.AutoModel.from_pretrained('onnx-community/BiRefNet_lite', opts);
+      S._bgProc =await TJS.AutoProcessor.from_pretrained('onnx-community/BiRefNet_lite');
+    }
+    const TJS=S._TJS;
+    setStage('Removing background\u2026','Running the model on your device \u2014 this can take a few seconds.'); setBar(100);
+    const blob=await new Promise(r=>S.srcCanvas.toBlob(r,'image/png'));
+    const url=URL.createObjectURL(blob);
+    const image=await TJS.RawImage.fromURL(url); URL.revokeObjectURL(url);
+    const { pixel_values }=await S._bgProc(image);
+    const { output_image }=await S._bgModel({ input_image: pixel_values });
+    const mask=await TJS.RawImage.fromTensor(output_image[0].sigmoid().mul(255).to('uint8')).resize(image.width, image.height);
+    const w=image.width, h=image.height;
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    const cx2=c.getContext('2d'); cx2.drawImage(S.srcCanvas,0,0,w,h);
+    const id=cx2.getImageData(0,0,w,h); const md=mask.data; const stride=Math.max(1,Math.round(md.length/(w*h)));
+    for(let i=0;i<w*h;i++){ id.data[i*4+3]=md[i*stride]; }
+    cx2.putImageData(id,0,0);
+    const trimmed=(typeof trimCanvas==='function'&&trimCanvas(c))||c;
+    const label=($('labelInput').value||'').trim() || 'AI cutout';
+    S.pieces.push({id:S.nextId++, label, canvas:trimmed}); $('labelInput').value='';
+    renderTrays(); updateCount(); hideAI();
+    toast('\u201c'+label+'\u201d added by AI');
+  }catch(err){
+    hideAI();
+    toast('Couldn\u2019t run AI cutout \u2014 it needs internet to load the model the first time.');
+  }
+}
+function srcImageData(){ const sc=$('srcCanvas'); return {data:sc.getContext('2d').getImageData(0,0,sc.width,sc.height).data, w:sc.width, h:sc.height}; }
+// Brightness/contrast gradient map (Sobel) — works on photos AND graphics.
+function buildGrad(img){
+  const w=img.w,h=img.h,d=img.data; const gray=new Float32Array(w*h);
+  for(let i=0,p=0;i<d.length;i+=4,p++) gray[p]=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+  const mag=new Float32Array(w*h); let mx=0;
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){ const o=y*w+x;
+    const gx=(gray[o-w+1]+2*gray[o+1]+gray[o+w+1])-(gray[o-w-1]+2*gray[o-1]+gray[o+w-1]);
+    const gy=(gray[o+w-1]+2*gray[o+w]+gray[o+w+1])-(gray[o-w-1]+2*gray[o-w]+gray[o-w+1]);
+    const m=Math.hypot(gx,gy); mag[o]=m; if(m>mx)mx=m; }
+  return {mag,w,h,max:mx};
+}
+function gradAt(G,x,y){ x=Math.round(x); y=Math.round(y); if(x<1)x=1; if(y<1)y=1; if(x>G.w-2)x=G.w-2; if(y>G.h-2)y=G.h-2; return G.mag[y*G.w+x]; }
+// Magnetic snap: pull each lasso point onto the strongest nearby edge (prefers edges
+// close to where you drew). Refines in a few passes with a shrinking search radius.
+function autoSnapRegion(idx){
+  const reg=S.regions[idx]; if(!reg||reg.type!=='lasso'||!S.srcCanvas) return false;
+  let pts=reg.pts.map(p=>({x:p.x,y:p.y})); const n=pts.length; if(n<6) return false;
+  const G=buildGrad(srcImageData());
+  const THRESH=Math.max(10, G.max*0.08);          // ignore flat / weak-texture areas
+  const reach=S.snapReach||22;
+  const passes=[{R:reach,w:0.5},{R:Math.max(8,Math.round(reach*0.64)),w:0.42},{R:Math.max(6,Math.round(reach*0.4)),w:0.35}];
+  let movedTotal=0;
+  for(const {R,w} of passes){
+    const out=new Array(n); let moved=0;
+    for(let i=0;i<n;i++){
+      const prev=pts[(i-1+n)%n], next=pts[(i+1)%n], cur=pts[i];
+      let tx=next.x-prev.x, ty=next.y-prev.y; const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl;
+      const ux=-ty, uy=tx;                          // unit normal to the outline
+      let bestT=0, bestScore=-1, bestG=0;
+      for(let t=-R;t<=R;t++){                       // look both inward and outward
+        const g=gradAt(G,cur.x+ux*t,cur.y+uy*t);
+        const score=g*(1 - w*(Math.abs(t)/R));      // strong edge, but prefer it close
+        if(score>bestScore){ bestScore=score; bestT=t; bestG=g; }
+      }
+      if(bestG>=THRESH && bestT!==0){ out[i]={x:cur.x+ux*bestT, y:cur.y+uy*bestT}; moved++; }
+      else out[i]={x:cur.x,y:cur.y};
+    }
+    const sm=out.map((p,i)=>{ const a=out[(i-1+n)%n], b=out[(i+1)%n]; return {x:p.x*0.6+(a.x+b.x)*0.2, y:p.y*0.6+(a.y+b.y)*0.2}; });
+    for(let i=0;i<n;i++) out[i]=sm[i];
+    pts=out; movedTotal+=moved;
+  }
+  if(movedTotal < n*0.2) return false;              // no real edges found -> keep manual outline
+  reg.pts=pts; return true;
+}
+function finalizeCut(){
+  if(!S.srcCanvas)return;
+  // commit any half-drawn shape, then require at least one region
+  if(S.tool==='lasso'&&S.poly.length>=3){ S.regions.push({type:'lasso',pts:S.poly.slice()}); if(S.snap) autoSnapRegion(S.regions.length-1); S.poly=[]; }
+  else if(S.rect){ const rr=normRect(S.rect); if(rr.w>4&&rr.h>4) S.regions.push({type:S.tool,rect:{x0:S.rect.x0,y0:S.rect.y0,x1:S.rect.x1,y1:S.rect.y1}}); S.rect=null; }
+  if(!S.regions.length){ toast('Draw a selection first.'); return; }
+  const sc=1/S.fitScale; // display -> natural
+  // combined bounding box (natural coords)
+  let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
+  for(const reg of S.regions){
+    if(reg.type==='lasso'){ for(const p of reg.pts){ const x=p.x*sc,y=p.y*sc; if(x<minx)minx=x; if(y<miny)miny=y; if(x>maxx)maxx=x; if(y>maxy)maxy=y; } }
+    else { const r=normRect(reg.rect); const x0=r.x*sc,y0=r.y*sc,x1=(r.x+r.w)*sc,y1=(r.y+r.h)*sc; if(x0<minx)minx=x0; if(y0<miny)miny=y0; if(x1>maxx)maxx=x1; if(y1>maxy)maxy=y1; }
+  }
+  const nx=Math.max(0,Math.floor(minx)), ny=Math.max(0,Math.floor(miny));
+  const nw=Math.min(S.srcCanvas.width-nx, Math.ceil(maxx)-nx), nh=Math.min(S.srcCanvas.height-ny, Math.ceil(maxy)-ny);
+  if(nw<=0||nh<=0){ toast('Selection is too small.'); return; }
+  const out=document.createElement('canvas'); out.width=nw; out.height=nh;
+  const o=out.getContext('2d');
+  // each region independently reveals the source -> union of all shapes
+  for(const reg of S.regions){
+    o.save(); o.beginPath();
+    if(reg.type==='lasso'){ const p=reg.pts; o.moveTo(p[0].x*sc-nx,p[0].y*sc-ny); for(let i=1;i<p.length;i++)o.lineTo(p[i].x*sc-nx,p[i].y*sc-ny); o.closePath(); }
+    else { const r=normRect(reg.rect); const x=r.x*sc-nx,y=r.y*sc-ny,w=r.w*sc,h=r.h*sc;
+      if(reg.type==='rect') o.rect(x,y,w,h);
+      else o.ellipse(x+w/2,y+h/2,Math.max(w/2,.1),Math.max(h/2,.1),0,0,7); }
+    o.clip(); o.drawImage(S.srcCanvas, -nx,-ny); o.restore();
+  }
+  const trimmed=trimCanvas(out)||out;
+  const label=($('labelInput').value||'').trim() || ('Piece '+S.nextId);
+  S.pieces.push({id:S.nextId++, label, canvas:trimmed});
+  $('labelInput').value='';
+  clearSelection();
+  renderTrays(); updateCount();
+  toast('"'+label+'" cut out. ('+S.pieces.length+' pieces)');
+}
+
+
+/* ============================== trays ============================== */
+function pieceDataURL(p){ return p.canvas.toDataURL('image/png'); }
+function renderTrays(){ renderCutTray(); if(S.mode==='compose')renderComposeTray(); }
+function updateCount(){ $('pieceCount').textContent=S.pieces.length; }
+
+function renderCutTray(){
+  const list=$('trayListCut'); list.innerHTML='';
+  if(!S.pieces.length){ list.innerHTML='<div class="tray-empty">No cutout pieces yet.<br>Trace a part of your image.</div>'; return; }
+  S.pieces.forEach(p=>{
+    const el=document.createElement('div'); el.className='piece';
+    el.innerHTML=`<div class="thumb"><img src="${pieceDataURL(p)}" alt=""></div>
+      <div class="cap"><span class="name" title="${esc(p.label)}">${esc(p.label)}</span>
+      <button title="Refine" data-r="${p.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+      <button title="Delete" data-d="${p.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      </div>`;
+    el.querySelector('[data-r]').onclick=(e)=>{e.stopPropagation();openRefine(p.id);};
+    el.querySelector('[data-d]').onclick=(e)=>{e.stopPropagation();deletePiece(p.id);};
+    list.appendChild(el);
+  });
+}
+function renderComposeTray(){
+  const list=$('trayListCompose'); list.innerHTML='';
+  if(!S.pieces.length){ list.innerHTML='<div class="tray-empty">Go to the Cut tab first<br>to create some pieces.</div>'; return; }
+  S.pieces.forEach(p=>{
+    const el=document.createElement('div'); el.className='piece';
+    el.draggable=true;
+    el.innerHTML=`<div class="add-badge">+ Add</div><div class="thumb"><img src="${pieceDataURL(p)}" alt=""></div>
+      <div class="cap"><span class="name" title="${esc(p.label)}">${esc(p.label)}</span></div>`;
+    el.onclick=()=>addInstance(p.id);
+    el.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/piece',String(p.id)); });
+    list.appendChild(el);
+  });
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function deletePiece(id){
+  S.pieces=S.pieces.filter(p=>p.id!==id);
+  S.instances=S.instances.filter(i=>i.pieceId!==id);
+  if(S.sel&&!S.instances.find(i=>i.id===S.sel))S.sel=null;
+  renderTrays(); updateCount(); refreshInspector(); if(S.mode==='compose')drawCompose();
+}
+function clearAllPieces(){
+  if(!S.pieces.length)return;
+  if(!confirm('Clear all pieces and the composition?'))return;
+  S.pieces=[]; S.instances=[]; S.sel=null;
+  renderTrays(); updateCount(); refreshInspector(); drawCompose();
+}
+
+/* ============================== refine modal ============================== */
+const R={pieceId:null, canvas:null, ctx:null, tool:'wand', undo:[], scale:1};
+function openRefine(id){
+  const p=S.pieces.find(x=>x.id===id); if(!p)return;
+  R.pieceId=id;
+  const work=document.createElement('canvas'); work.width=p.canvas.width; work.height=p.canvas.height;
+  work.getContext('2d').drawImage(p.canvas,0,0);
+  R.canvas=work; R.ctx=work.getContext('2d',{willReadFrequently:true}); R.undo=[]; R.orig=cloneCanvas(p.canvas);
+  $('refineTitle').textContent='Refine — '+p.label;
+  setRefineTool('wand');
+  const ec=$('editCanvas');
+  const maxW=Math.min(720, window.innerWidth-120), maxH=window.innerHeight*0.55;
+  R.scale=Math.min(maxW/work.width, maxH/work.height, 2);
+  ec.width=work.width; ec.height=work.height;
+  ec.style.width=(work.width*R.scale)+'px'; ec.style.height=(work.height*R.scale)+'px';
+  paintEdit();
+  $('refineModal').classList.add('open');
+}
+function closeRefine(){ $('refineModal').classList.remove('open'); }
+function cloneCanvas(src){const c=document.createElement('canvas');c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);return c;}
+function paintEdit(){ const ec=$('editCanvas'); const x=ec.getContext('2d'); x.clearRect(0,0,ec.width,ec.height); x.drawImage(R.canvas,0,0); }
+function setRefineTool(t){
+  R.tool=t;
+  $('rfWand').setAttribute('aria-pressed',t==='wand');
+  $('rfEraser').setAttribute('aria-pressed',t==='eraser');
+  $('tolWrap').style.display=t==='wand'?'flex':'none';
+  $('brushWrap').style.display=t==='eraser'?'flex':'none';
+  $('refineHint').textContent=t==='wand'?'Click the background with the magic wand to erase similar colors.':'Drag the eraser to wipe away parts you don’t want.';
+}
+$('tolR').oninput=e=>$('tolV').textContent=e.target.value;
+$('brushR').oninput=e=>$('brushV').textContent=e.target.value;
+
+function pushUndo(){ R.undo.push(cloneCanvas(R.canvas)); if(R.undo.length>20)R.undo.shift(); }
+function refineUndo(){ if(!R.undo.length){toast('Nothing to undo.');return;} const c=R.undo.pop(); R.ctx.clearRect(0,0,R.canvas.width,R.canvas.height); R.ctx.drawImage(c,0,0); paintEdit(); }
+function refineReset(){ pushUndo(); R.ctx.clearRect(0,0,R.canvas.width,R.canvas.height); R.ctx.drawImage(R.orig,0,0); paintEdit(); }
+
+const ecanvas=$('editCanvas');
+function ept(e){const r=ecanvas.getBoundingClientRect();return {x:Math.round((e.clientX-r.left)/R.scale), y:Math.round((e.clientY-r.top)/R.scale)};}
+let erasing=false;
+ecanvas.addEventListener('pointerdown',e=>{
+  const p=ept(e);
+  if(R.tool==='wand'){ pushUndo(); floodErase(p.x,p.y, +$('tolR').value); paintEdit(); }
+  else { pushUndo(); erasing=true; ecanvas.setPointerCapture(e.pointerId); eraseAt(p.x,p.y); }
+});
+ecanvas.addEventListener('pointermove',e=>{ if(erasing){ const p=ept(e); eraseAt(p.x,p.y);} });
+ecanvas.addEventListener('pointerup',()=>{ erasing=false; });
+function eraseAt(x,y){ const r=+$('brushR').value; R.ctx.save(); R.ctx.globalCompositeOperation='destination-out'; R.ctx.beginPath(); R.ctx.arc(x,y,r,0,7); R.ctx.fill(); R.ctx.restore(); paintEdit(); }
+
+function floodErase(sx,sy,tol){
+  const w=R.canvas.width,h=R.canvas.height;
+  if(sx<0||sy<0||sx>=w||sy>=h)return;
+  const img=R.ctx.getImageData(0,0,w,h); const d=img.data;
+  const idx=(sy*w+sx)*4;
+  if(d[idx+3]===0)return; // already transparent
+  const tr=d[idx],tg=d[idx+1],tb=d[idx+2];
+  const tol2=tol*tol*3;
+  const seen=new Uint8Array(w*h);
+  const stack=[sy*w+sx];
+  while(stack.length){
+    const pi=stack.pop();
+    if(seen[pi])continue; seen[pi]=1;
+    const di=pi*4;
+    if(d[di+3]===0)continue;
+    const dr=d[di]-tr, dg=d[di+1]-tg, db=d[di+2]-tb;
+    if(dr*dr+dg*dg+db*db>tol2)continue;
+    d[di+3]=0;
+    const px=pi%w, py=(pi-px)/w;
+    if(px>0)stack.push(pi-1);
+    if(px<w-1)stack.push(pi+1);
+    if(py>0)stack.push(pi-w);
+    if(py<h-1)stack.push(pi+w);
+  }
+  R.ctx.putImageData(img,0,0);
+}
+function saveRefine(){
+  const p=S.pieces.find(x=>x.id===R.pieceId); if(!p){closeRefine();return;}
+  const trimmed=trimCanvas(R.canvas)||R.canvas;
+  p.canvas=trimmed;
+  renderTrays();
+  // refresh any instances using this piece (drawCompose reads piece.canvas live)
+  if(S.mode==='compose')drawCompose();
+  closeRefine(); toast('Refined!');
+}
+function trimCanvas(c){
+  const w=c.width,h=c.height; const d=c.getContext('2d').getImageData(0,0,w,h).data;
+  let minx=w,miny=h,maxx=-1,maxy=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){ if(d[(y*w+x)*4+3]>0){ if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y; } }
+  if(maxx<0)return null;
+  const nw=maxx-minx+1, nh=maxy-miny+1;
+  const out=document.createElement('canvas'); out.width=nw; out.height=nh;
+  out.getContext('2d').drawImage(c,minx,miny,nw,nh,0,0,nw,nh);
+  return out;
+}
+
+/* ============================== compose canvas ============================== */
+const comp=$('compCanvas');
+const cctx=comp.getContext('2d');
+function presetSize(w,h){ $('cw').value=w; $('ch').value=h; applyCanvasSize(); }
+function applyCanvasSize(){
+  const w=Math.max(64,Math.min(4096,+$('cw').value||1200));
+  const h=Math.max(64,Math.min(4096,+$('ch').value||800));
+  comp.width=w; comp.height=h;
+  resizeCompCanvasDisplay(); drawCompose();
+}
+function resizeCompCanvasDisplay(){
+  const stage=$('compStage'); if(!stage.clientWidth)return;
+  const pad=48; const maxW=stage.clientWidth-pad, maxH=stage.clientHeight-pad;
+  const s=Math.min(maxW/comp.width, maxH/comp.height, 1);
+  comp.style.width=Math.round(comp.width*s)+'px';
+  comp.style.height=Math.round(comp.height*s)+'px';
+}
+function setBg(col){
+  S.bg=col;
+  document.querySelectorAll('.bg-row .swatch').forEach(s=>s.classList.remove('active'));
+  if(col===null)$('bgTrans').classList.add('active');
+  else if(col==='#ffffff'||col==='#101010'){ document.querySelectorAll('.bg-row .swatch').forEach(s=>{ if(s.style.background&&rgbToHex(s.style.background)===col)s.classList.add('active'); }); }
+  else $('bgPicker').classList.add('active');
+  drawCompose();
+}
+function rgbToHex(s){ const m=s.match(/\d+/g); if(!m)return s; return '#'+m.slice(0,3).map(n=>(+n).toString(16).padStart(2,'0')).join(''); }
+
+function addInstance(pieceId, atX, atY){
+  const p=S.pieces.find(x=>x.id===pieceId); if(!p)return;
+  const fit=Math.min(comp.width*0.5/p.canvas.width, comp.height*0.5/p.canvas.height, 1);
+  const inst={id:S.nextId++, pieceId, x:atX??comp.width/2, y:atY??comp.height/2, scale:fit||1, rot:0, flipX:false, alpha:1, z:(S.instances.length?Math.max(...S.instances.map(i=>i.z))+1:1)};
+  S.instances.push(inst); S.sel=inst.id;
+  setMode('compose'); drawCompose(); refreshInspector();
+}
+// drop onto canvas
+comp.addEventListener('dragover',e=>e.preventDefault());
+comp.addEventListener('drop',e=>{
+  e.preventDefault();
+  const pid=+e.dataTransfer.getData('text/piece'); if(!pid)return;
+  const pt=compPt(e); addInstance(pid, pt.x, pt.y);
+});
+
+function compPt(e){ const r=comp.getBoundingClientRect(); const sx=comp.width/r.width, sy=comp.height/r.height; return {x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy}; }
+
+function drawCompose(){
+  cctx.clearRect(0,0,comp.width,comp.height);
+  if(S.bg){ cctx.fillStyle=S.bg; cctx.fillRect(0,0,comp.width,comp.height); }
+  const sorted=[...S.instances].sort((a,b)=>a.z-b.z);
+  for(const inst of sorted){
+    const p=S.pieces.find(x=>x.id===inst.pieceId); if(!p)continue;
+    cctx.save();
+    cctx.globalAlpha=inst.alpha;
+    cctx.translate(inst.x,inst.y);
+    cctx.rotate(inst.rot*Math.PI/180);
+    cctx.scale(inst.scale*(inst.flipX?-1:1), inst.scale);
+    cctx.drawImage(p.canvas,-p.canvas.width/2,-p.canvas.height/2);
+    cctx.restore();
+  }
+  // selection chrome
+  const sel=S.instances.find(i=>i.id===S.sel);
+  if(sel){ drawSelChrome(sel); }
+}
+function instCorners(inst){
+  const p=S.pieces.find(x=>x.id===inst.pieceId); if(!p)return null;
+  const hw=p.canvas.width/2*inst.scale, hh=p.canvas.height/2*inst.scale;
+  const fx=inst.flipX?-1:1;
+  const pts=[[-hw*fx,-hh],[hw*fx,-hh],[hw*fx,hh],[-hw*fx,hh]];
+  const c=Math.cos(inst.rot*Math.PI/180), s=Math.sin(inst.rot*Math.PI/180);
+  return pts.map(([x,y])=>({x:inst.x+x*c-y*s, y:inst.y+x*s+y*c}));
+}
+function drawSelChrome(inst){
+  const cn=instCorners(inst); if(!cn)return;
+  cctx.save();
+  cctx.strokeStyle='#FF6A3D'; cctx.lineWidth=2/(comp.getBoundingClientRect().width/comp.width);
+  cctx.beginPath(); cctx.moveTo(cn[0].x,cn[0].y); for(let i=1;i<4;i++)cctx.lineTo(cn[i].x,cn[i].y); cctx.closePath(); cctx.stroke();
+  const hr=8/(comp.getBoundingClientRect().width/comp.width);
+  // scale handle (bottom-right index 2)
+  cctx.fillStyle='#FF6A3D'; cctx.beginPath(); cctx.arc(cn[2].x,cn[2].y,hr,0,7); cctx.fill();
+  cctx.fillStyle='#fff'; cctx.beginPath(); cctx.arc(cn[2].x,cn[2].y,hr*0.45,0,7); cctx.fill();
+  // rotate handle above top-mid
+  const topMid={x:(cn[0].x+cn[1].x)/2,y:(cn[0].y+cn[1].y)/2};
+  const ang=Math.atan2(cn[1].y-cn[2].y,cn[1].x-cn[2].x); // direction up
+  const rh={x:topMid.x+Math.cos(ang)*hr*3, y:topMid.y+Math.sin(ang)*hr*3};
+  cctx.strokeStyle='#FF6A3D'; cctx.beginPath(); cctx.moveTo(topMid.x,topMid.y); cctx.lineTo(rh.x,rh.y); cctx.stroke();
+  cctx.fillStyle='#fff'; cctx.strokeStyle='#FF6A3D'; cctx.beginPath(); cctx.arc(rh.x,rh.y,hr*0.8,0,7); cctx.fill(); cctx.stroke();
+  inst._rh=rh; inst._scaleH=cn[2];
+  cctx.restore();
+}
+
+/* compose pointer interactions */
+let cdrag=null; // {mode:'move'|'scale'|'rotate', ...}
+comp.addEventListener('pointerdown',e=>{
+  const pt=compPt(e);
+  const sel=S.instances.find(i=>i.id===S.sel);
+  if(sel){
+    const tol=14*(comp.width/comp.getBoundingClientRect().width);
+    if(sel._scaleH&&dist(pt,sel._scaleH)<tol){ cdrag={mode:'scale',id:sel.id,startDist:dist(pt,{x:sel.x,y:sel.y}),startScale:sel.scale}; comp.setPointerCapture(e.pointerId); return; }
+    if(sel._rh&&dist(pt,sel._rh)<tol){ cdrag={mode:'rotate',id:sel.id,startAng:Math.atan2(pt.y-sel.y,pt.x-sel.x),startRot:sel.rot}; comp.setPointerCapture(e.pointerId); return; }
+  }
+  const hit=hitTest(pt);
+  if(hit){ S.sel=hit.id; cdrag={mode:'move',id:hit.id,dx:pt.x-hit.x,dy:pt.y-hit.y}; comp.setPointerCapture(e.pointerId); refreshInspector(); drawCompose(); }
+  else { S.sel=null; cdrag=null; refreshInspector(); drawCompose(); }
+});
+comp.addEventListener('pointermove',e=>{
+  if(!cdrag)return;
+  const pt=compPt(e); const inst=S.instances.find(i=>i.id===cdrag.id); if(!inst)return;
+  if(cdrag.mode==='move'){ inst.x=pt.x-cdrag.dx; inst.y=pt.y-cdrag.dy; }
+  else if(cdrag.mode==='scale'){ const d=dist(pt,{x:inst.x,y:inst.y}); inst.scale=Math.max(0.02, cdrag.startScale*(d/(cdrag.startDist||1))); syncScaleSlider(inst); }
+  else if(cdrag.mode==='rotate'){ const a=Math.atan2(pt.y-inst.y,pt.x-inst.x); inst.rot=cdrag.startRot+(a-cdrag.startAng)*180/Math.PI; syncRotSlider(inst); }
+  drawCompose();
+});
+comp.addEventListener('pointerup',()=>{ cdrag=null; });
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+function hitTest(pt){
+  const sorted=[...S.instances].sort((a,b)=>b.z-a.z);
+  for(const inst of sorted){
+    const p=S.pieces.find(x=>x.id===inst.pieceId); if(!p)continue;
+    const dx=pt.x-inst.x, dy=pt.y-inst.y;
+    const c=Math.cos(-inst.rot*Math.PI/180), s=Math.sin(-inst.rot*Math.PI/180);
+    let lx=(dx*c-dy*s)/inst.scale, ly=(dx*s+dy*c)/inst.scale;
+    if(inst.flipX)lx=-lx;
+    const hw=p.canvas.width/2, hh=p.canvas.height/2;
+    if(lx>=-hw&&lx<=hw&&ly>=-hh&&ly<=hh){
+      // alpha test (clamp to valid pixel range — lx/ly can land exactly on the
+      // width/height edge, which would otherwise throw an IndexSizeError)
+      const px=Math.min(p.canvas.width-1, Math.max(0, Math.floor(lx+hw)));
+      const py=Math.min(p.canvas.height-1, Math.max(0, Math.floor(ly+hh)));
+      try{ const a=p.canvas.getContext('2d').getImageData(px,py,1,1).data[3]; if(a>10)return inst; }
+      catch(err){ return inst; }
+    }
+  }
+  return null;
+}
+
+/* inspector */
+function refreshInspector(){
+  const inst=S.instances.find(i=>i.id===S.sel);
+  $('noSel').style.display=inst?'none':'block';
+  $('selControls').style.display=inst?'block':'none';
+  if(inst){ syncScaleSlider(inst); syncRotSlider(inst); $('alphaR').value=Math.round(inst.alpha*100); $('alphaV').textContent=Math.round(inst.alpha*100)+'%'; }
+}
+function syncScaleSlider(inst){ const v=Math.round(inst.scale*100); $('scaleR').value=Math.min(400,Math.max(5,v)); $('scaleV').textContent=v+'%'; }
+function syncRotSlider(inst){ let r=Math.round(inst.rot)%360; if(r>180)r-=360; if(r<-180)r+=360; $('rotR').value=Math.max(-180,Math.min(180,r)); $('rotV').textContent=r+'°'; }
+function onScale(v){ const i=cur(); if(i){ i.scale=v/100; $('scaleV').textContent=v+'%'; drawCompose(); } }
+function onRotate(v){ const i=cur(); if(i){ i.rot=+v; $('rotV').textContent=v+'°'; drawCompose(); } }
+function onAlpha(v){ const i=cur(); if(i){ i.alpha=v/100; $('alphaV').textContent=v+'%'; drawCompose(); } }
+function cur(){ return S.instances.find(i=>i.id===S.sel); }
+function layer(dir){ const i=cur(); if(!i)return; const zs=S.instances.map(x=>x.z); if(dir>0)i.z=Math.max(...zs)+1; else i.z=Math.min(...zs)-1; drawCompose(); }
+function flipSel(){ const i=cur(); if(i){ i.flipX=!i.flipX; drawCompose(); } }
+function dupSel(){ const i=cur(); if(!i)return; const n={...i,id:S.nextId++,x:i.x+30,y:i.y+30,z:Math.max(...S.instances.map(x=>x.z))+1}; S.instances.push(n); S.sel=n.id; drawCompose(); refreshInspector(); }
+function delSel(){ S.instances=S.instances.filter(x=>x.id!==S.sel); S.sel=null; drawCompose(); refreshInspector(); }
+document.addEventListener('keydown',e=>{
+  if($('refineModal').classList.contains('open')||$('privacyModal').classList.contains('open'))return;
+  const typing=(e.target.tagName==='INPUT');
+  if(S.mode==='cut'){
+    if(S.regionSel!=null&&S.regions[S.regionSel]){
+      const step=e.shiftKey?10:1;
+      if(e.key==='ArrowLeft'){ e.preventDefault(); translateRegion(S.regions[S.regionSel],-step,0); redrawOverlay(); return; }
+      if(e.key==='ArrowRight'){ e.preventDefault(); translateRegion(S.regions[S.regionSel],step,0); redrawOverlay(); return; }
+      if(e.key==='ArrowUp'){ e.preventDefault(); translateRegion(S.regions[S.regionSel],0,-step); redrawOverlay(); return; }
+      if(e.key==='ArrowDown'){ e.preventDefault(); translateRegion(S.regions[S.regionSel],0,step); redrawOverlay(); return; }
+      if(!typing&&(e.key==='Backspace'||e.key==='Delete')){ e.preventDefault(); S.regions.splice(S.regionSel,1); S.regionSel=null; refreshCutButtons(); redrawOverlay(); return; }
+    }
+    if(!typing&&(e.key==='Backspace'||e.key==='Delete')){ e.preventDefault(); undoRegion(); }
+    else if(e.key==='Escape'){ clearSelection(); }
+    return;
+  }
+  if(S.mode!=='compose')return;
+  if((e.key==='Delete'||e.key==='Backspace')&&S.sel&&!typing){ e.preventDefault(); delSel(); }
+});
+
+/* ============================== export ============================== */
+function exportImage(){
+  if(!S.instances.length){ toast('No pieces on the canvas yet.'); return; }
+  const prev=S.sel; S.sel=null; drawCompose();
+  comp.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='composition.png'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    S.sel=prev; drawCompose();
+    toast('Saved as PNG!');
+  },'image/png');
+}
+
+/* privacy modal */
+function openPrivacy(){ $('privacyModal').classList.add('open'); }
+function closePrivacy(){ $('privacyModal').classList.remove('open'); }
+$('privacyModal').addEventListener('click',e=>{ if(e.target.id==='privacyModal')closePrivacy(); });
+
+/* init */
+setTool('lasso'); renderTrays(); updateCount(); refreshInspector();
+</script>
 </body>
 </html>
