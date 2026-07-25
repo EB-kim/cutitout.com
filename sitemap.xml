@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.cutitoutbg.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.cutitoutbg.com/privacy.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <!-- Uncomment each article as you publish it.
+  <url><loc>https://www.cutitoutbg.com/articles/combine-two-photos-into-one.html</loc><priority>0.9</priority></url>
+  <url><loc>https://www.cutitoutbg.com/articles/add-someone-to-a-photo.html</loc><priority>0.9</priority></url>
+  <url><loc>https://www.cutitoutbg.com/articles/make-stickers-from-photos.html</loc><priority>0.9</priority></url>
+  <url><loc>https://www.cutitoutbg.com/articles/transparent-png-from-photo.html</loc><priority>0.9</priority></url>
+  <url><loc>https://www.cutitoutbg.com/articles/make-logo-transparent.html</loc><priority>0.8</priority></url>
+  <url><loc>https://www.cutitoutbg.com/articles/remove-background-from-signature.html</loc><priority>0.8</priority></url>
+  -->
+</urlset>
