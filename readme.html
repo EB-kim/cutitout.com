@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>README — How CutItOut Works</title>
+<meta name="description" content="How CutItOut works: on-device processing, the cutout tools explained, and why your images never leave your browser.">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="canonical" href="https://www.cutitoutbg.com/readme.html">
+
+<meta property="og:type"        content="article">
+<meta property="og:url"         content="https://www.cutitoutbg.com/readme.html">
+<meta property="og:title"       content="README — How CutItOut Works">
+<meta property="og:description" content="How the cutout tools work, and why your images never leave your browser.">
+<meta property="og:image"       content="https://www.cutitoutbg.com/og-image.png">
+<meta property="og:site_name"   content="CutItOut">
+<meta name="theme-color" content="#0e1017">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236c8cff'/%3E%3Ctext y='23' x='16' font-size='18' text-anchor='middle'%3E%E2%9C%82%EF%B8%8F%3C/text%3E%3C/svg%3E">
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6423038605227421" crossorigin="anonymous"></script>
+
+<style>
+  /* Self-contained, matching privacy.html. No shared stylesheet by design —
+     this site has no build step and three pages; a 2KB inline block beats a
+     render-blocking round-trip. */
+  :root{
+    --bg:#0e1017; --panel:#171a24; --panel2:#1e2230; --line:#2a2f40;
+    --txt:#e7e9f0; --muted:#98a0b5; --accent:#6c8cff; --accent2:#41d6a2;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 700px at 80% -10%,#1b2030 0,var(--bg) 55%) no-repeat;
+    background-color:var(--bg); color:var(--txt); line-height:1.65; min-height:100vh;
+  }
+  a{color:var(--accent)}
+  a:hover{color:var(--accent2)}
+  .site-header{
+    display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+    padding:14px 22px; border-bottom:1px solid var(--line); background:rgba(20,23,33,.7);
+  }
+  .brand{font-weight:700; font-size:18px; color:var(--txt); text-decoration:none}
+  .brand span{color:var(--accent2)}
+  .site-header nav{display:flex; gap:16px; margin-left:auto; font-size:14px}
+  .site-header nav a{text-decoration:none}
+  main{max-width:760px; margin:0 auto; padding:38px 22px 60px}
+  h1{font-size:30px; margin:0 0 6px; line-height:1.25}
+  h2{font-size:17px; margin:34px 0 8px; color:var(--accent)}
+  h3{font-size:14px; margin:22px 0 6px; color:var(--txt)}
+  .meta{color:var(--muted); font-size:13px; margin:0 0 26px}
+  p,li{color:#cdd3e2; font-size:15px}
+  ul{padding-left:20px}
+  li{margin-bottom:8px}
+  strong{color:var(--txt)}
+  code{
+    background:var(--panel2); border:1px solid var(--line); border-radius:5px;
+    padding:1px 5px; font-size:13px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    color:#d7dcec;
+  }
+  .note{
+    background:var(--panel2); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:10px; padding:12px 15px; margin:18px 0; font-size:14px; color:#cdd3e2;
+  }
+  .note.warn{border-left-color:#ffb454}
+  .credits-h{font-size:12px!important;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--muted)!important;margin:44px 0 6px}
+  .credits{font-size:12.5px;color:var(--muted)}
+  .credits a{color:var(--muted);text-decoration:underline}
+  .credits a:hover{color:var(--accent)}
+  .cta{
+    display:inline-block; margin-top:34px; padding:12px 20px; border-radius:10px;
+    background:linear-gradient(180deg,var(--accent2),#33bd8d); color:#06231a;
+    font-weight:700; text-decoration:none;
+  }
+  .cta:hover{color:#06231a; filter:brightness(1.06)}
+  .site-footer{
+    border-top:1px solid var(--line); margin-top:40px; padding:20px 22px;
+    color:var(--muted); font-size:13px; text-align:center;
+  }
+  @media (max-width:520px){ h1{font-size:25px} main{padding:26px 18px 44px} table{font-size:13px} }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="/">Cut It Out<span>bg</span></a>
+  <nav>
+    <a href="/">Open the tool</a>
+    <a href="/readme.html">README</a>
+    <a href="/privacy.html">Privacy</a>
+  </nav>
+</header>
+
+<main>
+  <h1>README</h1>
+  <p class="meta">How CutItOut works, what it's built on, and how it's licensed.</p>
+
+  <p>CutItOut is a privacy-first, in-browser background remover, cutout tool and
+  collage maker. It is <strong>100% client-side</strong> — images never leave your
+  device. It's a static site with no build step and no server.</p>
+
+  <p><a href="/">Open the tool →</a></p>
+
+  <h2>Privacy model</h2>
+  <p>There is no upload. When you open an image it is decoded into a canvas in your
+  browser's memory and discarded when you close the tab. The AI model is downloaded
+  to your device and runs there; your pixels are never transmitted anywhere. The
+  full detail is in the <a href="/privacy.html">privacy policy</a>.</p>
+
+  <h2>How the cutting works</h2>
+  <p>Editing happens on stacked canvases in image-pixel space, so zoom never
+  affects output quality.</p>
+
+  <h3>Magic Erase</h3>
+  <p>A 4-connected flood fill over squared RGB distance from the pixel you click.
+  Pixels comfortably inside the tolerance become fully transparent; pixels just
+  past the threshold get partial transparency, so edges come out anti-aliased
+  instead of jagged.</p>
+
+  <h3>Smart Lasso</h3>
+  <p>The interesting one. Draw a rough loop and it snaps to the object's real
+  edges:</p>
+  <ul>
+    <li>Crop the loop's padded bounding box and run matting on <em>just that crop</em> —
+    the loop tells the AI which object you mean, the AI supplies the edge.</li>
+    <li>Multiply the AI's alpha by a feathered version of your drawn loop, so the
+    final edge follows the object's contour rather than your shaky hand.</li>
+    <li>Flood-fill outward through AI-foreground pixels to recover parts the loop
+    accidentally clipped — a chin, hair, an ear.</li>
+    <li>If the model can't load, fall back to colour-based region growing rather
+    than the raw polygon.</li>
+  </ul>
+
+  <h3>Undo history</h3>
+  <p>History stores the <strong>alpha channel only</strong> as a <code>Uint8Array</code>.
+  Every edit touches alpha and nothing else, and the pristine RGB is kept
+  separately, so alpha alone fully describes a state — at a quarter of the memory
+  of full RGBA snapshots.</p>
+
+  <h2>The first time you use an AI tool</h2>
+  <p>Because the AI runs on your device rather than on a server, your browser has
+  to fetch it once before the first cutout. It's a sizeable one-time download,
+  after which it's cached — every cutout after that is fast and works offline.</p>
+
+  <div class="note">
+    On browsers that support <strong>WebGPU</strong> the download is smaller and
+    cutouts are much faster. Without it, we ask before starting the larger
+    download, and declining costs you nothing: <strong>Magic Erase</strong>, the
+    brushes and <strong>Smart Lasso</strong> with <em>AI snap</em> unchecked all
+    work with no download at all.
+  </div>
+
+  <a class="cta" href="/">Open the free cutout tool →</a>
+
+  <!-- Attribution. Kept deliberately small and at the foot rather than as a
+       feature section. Strictly this may not be required at all: the MIT and
+       Apache-2.0 notice obligations attach to *distributing* copies, and this
+       site distributes neither — the browser fetches both straight from their
+       original CDNs. Included anyway because it costs nothing and removes the
+       question. -->
+  <h2 class="credits-h">Credits</h2>
+  <p class="credits">Subject detection uses
+    <a href="https://github.com/ZhengPeng7/BiRefNet" rel="noopener nofollow" target="_blank">BiRefNet</a>
+    (MIT) running via
+    <a href="https://github.com/huggingface/transformers.js" rel="noopener nofollow" target="_blank">Transformers.js</a>
+    (Apache-2.0). Both are open source and run entirely on your device.</p>
+</main>
+
+<footer class="site-footer">
+  <p>© <span id="y">2026</span> cutitoutbg.com ·
+     <a href="/readme.html">README</a> ·
+     <a href="/privacy.html">Privacy</a> ·
+     Runs entirely in your browser.</p>
+</footer>
+<script>document.getElementById("y").textContent=new Date().getFullYear();</script>
+</body>
+</html>

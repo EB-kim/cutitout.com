@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — CutItOut</title>
+<meta name="description" content="How cutitoutbg.com handles your data: your images are processed only in your browser and never uploaded. Details on advertising cookies and your choices.">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="canonical" href="https://www.cutitoutbg.com/privacy.html">
+
+<meta property="og:type"        content="article">
+<meta property="og:url"         content="https://www.cutitoutbg.com/privacy.html">
+<meta property="og:title"       content="Privacy Policy — CutItOut">
+<meta property="og:description" content="Your images are processed only in your browser and never uploaded.">
+<meta property="og:image"       content="https://www.cutitoutbg.com/og-image.png">
+<meta property="og:site_name"   content="CutItOut">
+<meta name="theme-color" content="#0e1017">
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6423038605227421" crossorigin="anonymous"></script>
+
+<style>
+  /* Self-contained by design. This page previously linked /css/style.css,
+     which has never existed in this repo — the policy rendered as unstyled
+     black-on-white text, which looks abandoned on a page AdSense reviewers
+     read. Inlining costs ~2KB and removes a 404 and a render-blocking
+     round-trip. */
+  :root{
+    --bg:#0e1017; --panel:#171a24; --line:#2a2f40;
+    --txt:#e7e9f0; --muted:#98a0b5; --accent:#6c8cff; --accent2:#41d6a2;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 700px at 80% -10%,#1b2030 0,var(--bg) 55%) no-repeat;
+    background-color:var(--bg); color:var(--txt); line-height:1.65; min-height:100vh;
+  }
+  a{color:var(--accent)}
+  a:hover{color:var(--accent2)}
+  .site-header{
+    display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+    padding:14px 22px; border-bottom:1px solid var(--line); background:rgba(20,23,33,.7);
+  }
+  .brand{font-weight:700; font-size:18px; color:var(--txt); text-decoration:none}
+  .brand span{color:var(--accent2)}
+  .site-header nav{display:flex; gap:16px; margin-left:auto; font-size:14px}
+  .site-header nav a{text-decoration:none}
+  main{max-width:720px; margin:0 auto; padding:38px 22px 60px}
+  h1{font-size:30px; margin:0 0 6px; line-height:1.25}
+  h2{font-size:17px; margin:32px 0 8px; color:var(--accent)}
+  .meta{color:var(--muted); font-size:13px; margin:0 0 26px}
+  p,li{color:#cdd3e2; font-size:15px}
+  ul{padding-left:20px}
+  li{margin-bottom:8px}
+  strong{color:var(--txt)}
+  .cta{
+    display:inline-block; margin-top:34px; padding:12px 20px; border-radius:10px;
+    background:linear-gradient(180deg,var(--accent2),#33bd8d); color:#06231a;
+    font-weight:700; text-decoration:none;
+  }
+  .cta:hover{color:#06231a; filter:brightness(1.06)}
+  .site-footer{
+    border-top:1px solid var(--line); margin-top:40px; padding:20px 22px;
+    color:var(--muted); font-size:13px; text-align:center;
+  }
+  @media (max-width:520px){ h1{font-size:25px} main{padding:26px 18px 44px} }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="/">Cut It Out<span>bg</span></a>
+  <nav>
+    <a href="/">Open the tool</a>
+    <a href="/readme.html">README</a>
+    <a href="/privacy.html">Privacy</a>
+  </nav>
+</header>
+
+<main>
+  <h1>Privacy policy</h1>
+  <!-- Hard-coded. This was previously generated with new Date() on each load,
+       so the policy claimed to have been revised the very day you read it —
+       misleading, and a signal reviewers treat as an unmaintained page. -->
+  <p class="meta">Last updated: 26 July 2026</p>
+
+  <h2>The short version</h2>
+  <p>Your images never leave your device. Everything the tool does — background
+  removal, cutting, erasing, exporting — happens locally in your browser. We do
+  not upload, store, or see your images. We have no accounts and ask for no
+  personal information.</p>
+
+  <h2>Your images</h2>
+  <p>When you open an image in the tool, it is loaded into your browser's memory
+  and drawn to a canvas on your device. It is discarded when you close or refresh
+  the tab. It is never sent to us or to any third party.</p>
+
+  <h2>The background-removal model</h2>
+  <p>The AI that detects subjects runs on your own device. The first time you use
+  it, your browser downloads two things and caches them: the runtime software from
+  the <strong>jsDelivr</strong> content delivery network, and the neural network
+  itself from <strong>Hugging Face</strong>, which hosts the open-source model.
+  Those downloads reveal only that a browser at your IP address requested those
+  files — your image is not part of either request and is never transmitted. All
+  processing happens afterwards, on your device, inside the page.</p>
+
+  <h2>Information we collect</h2>
+  <p>We do not collect names, emails, or accounts. Like most websites, our host
+  and content-delivery network may process standard technical data (such as your
+  IP address and browser type) to serve the page and protect against abuse. We do
+  not use this to identify you.</p>
+
+  <h2>Local storage</h2>
+  <p>We store a single flag in your browser's local storage
+  (<code>cutitout_seen_help</code>) so the "How to use" panel only opens
+  automatically on your first visit. It contains no personal data and never
+  leaves your device. Clearing your browser data removes it.</p>
+
+  <h2>Advertising and cookies</h2>
+  <p>This site is supported by ads served through <strong>Google AdSense</strong>.
+  Google and its partners may use cookies and similar technologies to serve ads
+  based on your prior visits to this and other websites.</p>
+  <ul>
+    <li>Google's use of advertising cookies enables it and its partners to serve
+    ads to you based on your visits to this site and/or other sites.</li>
+    <li>You can opt out of personalized advertising by visiting
+    <a href="https://www.google.com/settings/ads" rel="nofollow noopener" target="_blank">Google Ads Settings</a>.</li>
+    <li>You can also opt out of third-party vendor cookies at
+    <a href="https://www.aboutads.info" rel="nofollow noopener" target="_blank">aboutads.info</a>.</li>
+  </ul>
+  <p>Ad scripts are loaded from Google's ad domains. These scripts are separate
+  from our own code — our "your image never leaves your device" promise applies to
+  how <em>we</em> handle your images, not to Google's advertising systems.</p>
+
+  <h2>Analytics</h2>
+  <p>We do not currently run any analytics on this site. If that changes we will
+  use privacy-respecting, aggregate analytics that do not identify individual
+  users, and we will update this page. We do not sell any data.</p>
+
+  <h2>Children</h2>
+  <p>This site is not directed to children under 13 and we do not knowingly
+  collect information from them.</p>
+
+  <h2>Changes</h2>
+  <p>We may update this policy; the "last updated" date above reflects the latest
+  version.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy? Email <strong>contact@cutitoutbg.com</strong>.</p>
+
+  <a class="cta" href="/">Open the free cutout tool →</a>
+</main>
+
+<footer class="site-footer">
+  <p>© <span id="y">2026</span> cutitoutbg.com ·
+     <a href="/readme.html">README</a> ·
+     <a href="/privacy.html">Privacy</a> ·
+     Runs entirely in your browser.</p>
+</footer>
+<script>document.getElementById("y").textContent=new Date().getFullYear();</script>
+</body>
+</html>
